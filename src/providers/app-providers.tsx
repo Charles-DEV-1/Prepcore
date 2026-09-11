@@ -6,7 +6,13 @@ import { QueryProvider } from "@/providers/query-provider";
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="dark"
+      storageKey="prepcore_theme"
+      enableSystem={false}
+      disableTransitionOnChange
+    >
       <QueryProvider>{children}</QueryProvider>
     </ThemeProvider>
   );

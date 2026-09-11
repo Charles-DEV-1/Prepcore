@@ -17,6 +17,7 @@ import { UserMenu } from "./user-menu";
 import { PointsCelebration } from "@/components/ui/points-celebration";
 import { PageTransition, StreakCelebration } from "@/components/ui/motion";
 
+// Prepcore — Dark Mode
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -92,11 +93,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-app">
       <PointsCelebration />
       <StreakCelebration />
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-border bg-white/90 px-4 py-5 backdrop-blur-xl lg:flex lg:flex-col">
-        <div className="flex-1 overflow-y-auto">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-border bg-white/90 px-4 py-5 backdrop-blur-xl dark:border-border-card dark:bg-card-surface lg:flex lg:flex-col">
+        <div className="scrollbar-hidden flex-1 overflow-y-auto">
           <SidebarContent pathname={pathname} />
         </div>
       </aside>
@@ -109,7 +110,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           onClick={() => setMobileMenuOpen(false)}
         >
           <aside
-            className="flex h-full w-[min(19rem,86vw)] animate-in slide-in-from-left duration-300 flex-col border-r border-border bg-white px-4 py-5 shadow-2xl"
+            className="flex h-full w-[min(19rem,86vw)] animate-in slide-in-from-left duration-300 flex-col border-r border-border bg-white px-4 py-5 shadow-2xl dark:border-border-card dark:bg-card-surface"
             aria-label="Mobile navigation"
             onClick={(event) => event.stopPropagation()}
           >
@@ -123,8 +124,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   className="rounded-full"
                 />
                 <div>
-                  <p className="text-lg font-extrabold text-navy">prepcore</p>
-                  <p className="text-xs font-medium text-slate-500">
+                  <p className="text-lg font-extrabold text-navy dark:text-main">prepcore</p>
+                  <p className="text-xs font-medium text-slate-500 dark:text-sub">
                     Smart prep. Higher scores.
                   </p>
                 </div>
@@ -132,7 +133,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 aria-label="Close menu"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-slate-600 transition hover:bg-softblue hover:text-primary"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-slate-600 transition hover:bg-softblue hover:text-primary dark:text-sub dark:hover:bg-slate-800/50 dark:hover:text-slate-200"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <X className="h-5 w-5" />
@@ -144,14 +145,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       <div className="lg:pl-72">
-        <header className="sticky top-0 z-30 border-b border-border bg-white/88 px-4 py-3 backdrop-blur-xl">
+        <header className="sticky top-0 z-30 border-b border-border bg-white/88 px-4 py-3 backdrop-blur-xl dark:border-border-card dark:bg-app/88">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
             <div className="flex items-center gap-2 lg:hidden">
               <button
                 type="button"
                 aria-label="Open menu"
                 aria-expanded={mobileMenuOpen}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-slate-600 transition hover:bg-softblue hover:text-primary"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-slate-600 transition hover:bg-softblue hover:text-primary dark:text-sub dark:hover:bg-slate-800/50 dark:hover:text-slate-200"
                 onClick={() => setMobileMenuOpen(true)}
               >
                 <Menu className="h-5 w-5" />
@@ -165,11 +166,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   className="rounded-full"
                   priority
                 />
-                <span className="font-semibold text-navy">prepcore</span>
+                <span className="font-semibold text-navy dark:text-main">prepcore</span>
               </Link>
             </div>
 
-            <div className="hidden h-10 max-w-md flex-1 items-center gap-2 rounded-xl border border-border bg-white px-3 text-sm text-muted-foreground shadow-sm md:flex">
+            <div className="hidden h-10 max-w-md flex-1 items-center gap-2 rounded-xl border border-border bg-white px-3 text-sm text-muted-foreground shadow-sm dark:border-border-card dark:bg-card-surface dark:text-sub dark:shadow-none dark:ring-1 dark:ring-white/5 md:flex">
               <Search className="h-4 w-4" />
               Search subjects, topics, sessions
             </div>
@@ -251,8 +252,8 @@ function SidebarContent({
             className="rounded-full"
           />
           <div>
-            <p className="text-lg font-extrabold text-navy">prepcore</p>
-            <p className="text-xs font-medium text-slate-500">
+            <p className="text-lg font-extrabold text-navy dark:text-main">prepcore</p>
+            <p className="text-xs font-medium text-slate-500 dark:text-sub">
               Smart prep. Higher scores.
             </p>
           </div>
@@ -267,8 +268,8 @@ function SidebarContent({
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-softblue hover:text-primary",
-                active && "bg-softblue text-primary shadow-sm",
+                "flex items-center gap-3 rounded-xl border-l-4 border-transparent px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-softblue hover:text-primary dark:text-sub dark:hover:bg-slate-800/50 dark:hover:text-slate-200",
+                active && "bg-softblue text-primary shadow-sm dark:border-blue-500 dark:bg-blue-600/10 dark:text-blue-400",
               )}
             >
               <item.icon className="h-4 w-4" />

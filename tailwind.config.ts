@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 import animate from "tailwindcss-animate";
 
+// Prepcore — Dark Mode
 const config: Config = {
   darkMode: ["class"],
   content: ["./src/**/*.{ts,tsx}"],
@@ -14,6 +15,11 @@ const config: Config = {
     },
     extend: {
       colors: {
+        "app": "#0F172A",
+        "card-surface": "#1E293B",
+        "border-card": "#334155",
+        "text-main": "#F8FAFC",
+        "text-sub": "#94A3B8",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

@@ -51,13 +51,13 @@ body {
 }
 
 .dark {
-  --background: 215 38% 12%;
-  --foreground: 210 40% 96%;
-  --card: 215 34% 16%;
-  --card-foreground: 210 40% 96%;
+  --background: 222 47% 11%;
+  --foreground: 210 40% 98%;
+  --card: 215 28% 17%;
+  --card-foreground: 210 40% 98%;
   --border: 215 25% 27%;
   --input: 215 25% 27%;
-  --ring: 214 92% 67%;
+  --ring: 217 91% 60%;
 }
 
 .dark body {
@@ -118,23 +118,37 @@ body {
 .dark .bg-white\/88,
 .dark .bg-white\/80,
 .dark .bg-white\/70 {
-  background-color: #132743;
+  background-color: #1e293b;
 }
 
 .dark .bg-softblue {
-  background-color: #1b3c66;
+  background-color: rgba(37, 99, 235, 0.2);
 }
 
 .dark .text-navy,
+.dark .text-main {
+  color: #f8fafc;
+}
+
 .dark .text-slate-700,
 .dark .text-slate-600,
 .dark .text-slate-500,
-.dark .text-slate-400 {
-  color: #c7d8ec;
+.dark .text-slate-400,
+.dark .text-slate-300 {
+  color: #94a3b8;
 }
 
-.dark .text-slate-300 {
-  color: #a8bed8;
+.dark .text-primary,
+.dark .hover\:text-primary:hover {
+  color: #60a5fa;
+}
+
+.dark .scrollbar-hidden {
+  scrollbar-width: none;
+}
+
+.dark .scrollbar-hidden::-webkit-scrollbar {
+  display: none;
 }
 
 .dark .border-slate-200,
