@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { AnswerFeedback, Stagger, StaggerItem } from "@/components/ui/motion";
 import type { ExamGoal } from "@/types/app";
 
+// Prepcore — Dark Mode
 const SUBJECTS = [
   { label: "English", id: "11111111-1111-1111-1111-111111111111" },
   { label: "Mathematics", id: "22222222-2222-2222-2222-222222222222" },
@@ -263,7 +264,7 @@ export function PracticePage() {
 
   return (
     <div className="space-y-4">
-      <div className="inline-flex rounded-xl border border-border bg-white p-1">
+      <div className="inline-flex rounded-xl border border-border bg-white p-1 dark:border-border-card dark:bg-card-surface">
         {(["jamb", "waec"] as const).map((examType) => (
           <Button
             key={examType}
@@ -312,7 +313,7 @@ export function PracticePage() {
                 <div className="space-y-2">
                   <p className="text-sm font-semibold text-navy">Year</p>
                   <select
-                    className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm dark:border-border-card dark:bg-card-surface dark:text-main"
                     value={selectedYear ?? ""}
                     onChange={(event) =>
                       setSelectedYear(Number(event.target.value))
@@ -327,7 +328,7 @@ export function PracticePage() {
                 </div>
               )}
 
-              <div className="rounded-2xl border border-border bg-[#F8FAFC] p-4 space-y-3">
+              <div className="rounded-2xl border border-border bg-[#F8FAFC] p-4 space-y-3 dark:border-border-card dark:bg-card-surface">
                 <p className="text-sm font-semibold text-navy">
                   Session summary
                 </p>
@@ -419,17 +420,17 @@ export function PracticePage() {
                       <StaggerItem key={key}>
                         <button
                         className={cn(
-                          "flex w-full items-center justify-between rounded-2xl border border-border p-4 text-left text-base font-medium transition hover:border-primary hover:bg-softblue",
+                          "flex w-full items-center justify-between rounded-2xl border border-border p-4 text-left text-base font-medium transition hover:border-primary hover:bg-softblue dark:border-border-card dark:bg-card-surface dark:text-main dark:hover:border-blue-500 dark:hover:bg-blue-600/20",
                           selected === key &&
                             !submitted &&
-                            "border-primary bg-softblue",
+                            "border-primary bg-softblue dark:border-blue-500 dark:bg-blue-600/20",
                           submitted &&
                             key === question.correct_answer &&
-                            "border-green-500 bg-green-50",
+                            "border-green-500 bg-green-50 dark:border-green-400 dark:bg-green-500/10",
                           submitted &&
                             selected === key &&
                             key !== question.correct_answer &&
-                            "border-red-400 bg-red-50",
+                            "border-red-400 bg-red-50 dark:border-red-400 dark:bg-red-500/10",
                         )}
                         onClick={() => handleSelect(key)}
                       >

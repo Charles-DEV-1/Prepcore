@@ -33,6 +33,7 @@ import {
 } from "@/services/api/questions";
 import type { ExamType } from "@/types/app";
 
+// Prepcore — Dark Mode
 const EXAM_SUBJECTS = [
   { label: "English", id: "11111111-1111-1111-1111-111111111111" },
   { label: "Mathematics", id: "22222222-2222-2222-2222-222222222222" },
@@ -305,16 +306,16 @@ export function ExamPage() {
                   key={examType}
                   type="button"
                   className={cn(
-                    "rounded-2xl border p-5 text-left transition hover:border-primary",
+                    "rounded-2xl border p-5 text-left transition hover:border-primary dark:border-border-card dark:bg-card-surface dark:hover:border-blue-500 dark:hover:bg-blue-600/20",
                     selectedExamType === examType &&
-                      "border-primary bg-softblue",
+                      "border-primary bg-softblue dark:border-blue-500 dark:bg-blue-600/20",
                   )}
                   onClick={() => setSelectedExamType(examType)}
                 >
-                  <p className="font-bold text-navy">
+                  <p className="font-bold text-navy dark:text-main">
                     {examType === "jamb" ? "JAMB Mock" : "WAEC Mock"}
                   </p>
-                  <p className="mt-2 text-sm text-slate-500">
+                  <p className="mt-2 text-sm text-slate-500 dark:text-sub">
                     {examType === "jamb"
                       ? "English Language plus three subjects."
                       : "One WAEC subject with a one-hour timer."}
@@ -322,24 +323,24 @@ export function ExamPage() {
                 </button>
               ))}
             </div>
-            <div className="rounded-2xl border border-border bg-[#F8FAFC] p-5 space-y-3">
+            <div className="rounded-2xl border border-border bg-[#F8FAFC] p-5 space-y-3 dark:border-border-card dark:bg-card-surface">
               <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Questions</span>
-                <span className="font-semibold text-navy">
+                  <span className="text-slate-500 dark:text-sub">Questions</span>
+                  <span className="font-semibold text-navy dark:text-main">
                   {selectedExamType === "jamb"
                     ? "180 questions"
                     : "50 questions"}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Duration</span>
-                <span className="font-semibold text-navy">
+                  <span className="text-slate-500 dark:text-sub">Duration</span>
+                  <span className="font-semibold text-navy dark:text-main">
                   {selectedExamType === "jamb" ? "2 hours" : "1 hour"}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Subjects</span>
-                <span className="font-semibold text-navy">
+                  <span className="text-slate-500 dark:text-sub">Subjects</span>
+                  <span className="font-semibold text-navy dark:text-main">
                   {selectedExamType === "jamb"
                     ? "English locked + 3 subjects"
                     : (selectedWaecSubject?.name ?? "Choose one subject")}
@@ -349,7 +350,7 @@ export function ExamPage() {
 
             {selectedExamType === "jamb" ? (
               <div className="space-y-3">
-                <p className="text-sm font-semibold text-navy">
+                <p className="text-sm font-semibold text-navy dark:text-main">
                   English Language is locked. Pick 3 more subjects.
                 </p>
                 <div className="grid grid-cols-2 gap-2">
@@ -396,7 +397,7 @@ export function ExamPage() {
                   Choose WAEC subject
                 </p>
                 <select
-                  className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm dark:border-border-card dark:bg-card-surface dark:text-main"
                   value={selectedWaecSubjectId}
                   onChange={(event) =>
                     setSelectedWaecSubjectId(event.target.value)
@@ -510,7 +511,7 @@ export function ExamPage() {
                   <button
                     key={key}
                     className={cn(
-                      "flex w-full items-center gap-3 rounded-2xl border border-border p-4 text-left text-base font-medium transition hover:border-primary hover:bg-softblue",
+                      "flex w-full items-center gap-3 rounded-2xl border border-border p-4 text-left text-base font-medium transition hover:border-primary hover:bg-softblue dark:border-border-card dark:bg-card-surface dark:text-main dark:hover:border-blue-500 dark:hover:bg-blue-600/20",
                       selectedAnswers[question.id] === key &&
                         "border-primary bg-softblue",
                     )}
@@ -576,12 +577,12 @@ export function ExamPage() {
               <button
                 key={`${item.id}-${index}`}
                 className={cn(
-                  "h-9 rounded-lg border border-border bg-white text-xs font-semibold text-navy transition hover:bg-softblue",
+                  "h-9 rounded-lg border border-border bg-white text-xs font-semibold text-navy transition hover:bg-softblue dark:border-border-card dark:bg-card-surface dark:text-main dark:hover:bg-blue-600/20 dark:hover:text-white",
                   index === activeQuestionIndex &&
-                    "border-primary bg-softblue text-primary",
+                    "border-primary bg-softblue text-primary dark:border-blue-500 dark:bg-blue-600/20 dark:text-blue-400",
                   selectedAnswers[item.id] &&
                     index !== activeQuestionIndex &&
-                    "border-green-400 bg-green-50 text-green-700",
+                    "border-green-400 bg-green-50 text-green-700 dark:border-green-400 dark:bg-green-500/10 dark:text-green-400",
                   flaggedQuestionIds.includes(item.id) && "ring-2 ring-amber",
                 )}
                 onClick={() => setSubjectQuestionIndex(index)}

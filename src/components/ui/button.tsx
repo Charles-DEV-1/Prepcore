@@ -3,15 +3,16 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
+// Prepcore — Dark Mode
 const buttonVariants = cva(
   "inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold transition-all duration-200 active:scale-[0.97] motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
         default: "blue-gradient-button text-primary-foreground hover:-translate-y-0.5",
-        secondary: "bg-softblue text-primary hover:bg-blue-100",
-        outline: "border border-border bg-white text-navy shadow-sm hover:-translate-y-0.5 hover:bg-softblue",
-        ghost: "text-slate-600 hover:bg-softblue hover:text-primary",
+        secondary: "bg-softblue text-primary hover:bg-blue-100 dark:bg-blue-600/20 dark:text-blue-400 dark:hover:bg-blue-600/30",
+        outline: "border border-border bg-white text-navy shadow-sm hover:-translate-y-0.5 hover:bg-softblue dark:border-border-card dark:bg-card-surface dark:text-main dark:hover:bg-slate-700 dark:hover:text-white",
+        ghost: "text-slate-600 hover:bg-softblue hover:text-primary dark:text-sub dark:hover:bg-slate-800/70 dark:hover:text-white",
         destructive: "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
       },
       size: {
