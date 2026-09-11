@@ -24,6 +24,7 @@ import { Progress } from "@/components/ui/progress";
 import { Reveal } from "@/components/ui/reveal";
 import { faqs } from "@/constants/mock-data";
 
+// Prepcore — Dark Mode
 const features = [
   {
     title: "Past Questions",
@@ -66,20 +67,20 @@ const stats = [
 
 export function LandingPage() {
   return (
-    <div className="min-h-screen overflow-hidden bg-white text-navy">
+    <div className="min-h-screen overflow-hidden bg-white text-navy dark:bg-[#0B1220] dark:text-white">
       <PublicNavbar />
 
-      <section className="brand-blue-surface relative border-b border-border">
+      <section className="brand-blue-surface relative border-b border-border dark:bg-[#0B1220]">
         <div className="pointer-events-none absolute left-1/2 top-8 h-64 w-64 rounded-full bg-blue-200/30 blur-3xl" />
         <div className="container grid min-h-[calc(100vh-4rem)] items-center gap-10 py-12 lg:grid-cols-[0.95fr_1.05fr] lg:py-16">
           <div className="relative z-10">
-            <Badge className="border-blue-200 bg-white/80 px-4 py-2 text-sm font-semibold text-primary shadow-sm">
+            <Badge className="border-blue-200 bg-white/80 px-4 py-2 text-sm font-semibold text-primary shadow-sm dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-400">
               AI-powered prep for Nigerian students
             </Badge>
-            <h1 className="mt-6 max-w-3xl text-5xl font-bold leading-[1.03] tracking-normal text-navy sm:text-6xl lg:text-7xl">
+            <h1 className="mt-6 max-w-3xl text-5xl font-bold leading-[1.03] tracking-normal text-navy dark:text-white sm:text-6xl lg:text-7xl">
               The modern learning platform to ace JAMB, WAEC, and NECO.
             </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600 sm:text-xl">
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600 dark:text-slate-400 sm:text-xl">
               Prepcore helps students practise smarter, understand mistakes
               faster, and walk into exam day with real confidence.
             </p>
@@ -90,12 +91,12 @@ export function LandingPage() {
                 </Link>
               </Button>
             </div>
-            <div className="mt-8 flex flex-wrap gap-3 text-sm font-medium text-slate-500">
+            <div className="mt-8 flex flex-wrap gap-3 text-sm font-medium text-slate-500 dark:text-slate-400">
               {["Free to start", "Built for mobile", "JAMB, WAEC, NECO"].map(
                 (item) => (
                   <span
                     key={item}
-                    className="rounded-full border border-blue-100 bg-white/80 px-4 py-2 shadow-sm"
+                    className="rounded-full border border-blue-100 bg-white/80 px-4 py-2 shadow-sm dark:border-blue-500/20 dark:bg-blue-500/10"
                   >
                     {item}
                   </span>
@@ -105,7 +106,7 @@ export function LandingPage() {
           </div>
 
           <div className="relative z-10 space-y-5">
-            <div className="overflow-hidden rounded-[1.75rem] border border-white/70 bg-navy shadow-soft">
+            <div className="overflow-hidden rounded-[1.75rem] border border-white/70 bg-navy shadow-soft dark:bg-[#151E2E] dark:ring-1 dark:ring-white/10">
               <Image
                 src="/Prepcore_app_logo_design_202606131935.jpeg"
                 alt="Prepcore app branding showcase"
@@ -116,8 +117,8 @@ export function LandingPage() {
               />
             </div>
 
-            <div className="soft-card rounded-[2rem] p-4 md:p-5">
-              <div className="rounded-[1.5rem] bg-gradient-to-br from-white via-[#F8FAFC] to-[#EFF6FF] p-4">
+            <div className="soft-card rounded-[2rem] p-4 md:p-5 dark:bg-[#151E2E] dark:ring-1 dark:ring-white/5">
+              <div className="rounded-[1.5rem] bg-gradient-to-br from-white via-[#F8FAFC] to-[#EFF6FF] p-4 dark:from-[#151E2E] dark:via-[#151E2E] dark:to-[#1B2B45]">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Image
@@ -128,15 +129,15 @@ export function LandingPage() {
                       className="rounded-full"
                     />
                     <div>
-                      <p className="text-sm font-bold text-navy">
+                      <p className="text-sm font-bold text-navy dark:text-white">
                         Prepcore Dashboard
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
                         Today&apos;s study plan
                       </p>
                     </div>
                   </div>
-                  <Badge className="border-blue-200 bg-white text-primary">
+                  <Badge className="border-blue-200 bg-white text-primary dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-400">
                     72% ready
                   </Badge>
                 </div>
@@ -149,13 +150,13 @@ export function LandingPage() {
                   ].map(([label, value, Icon]) => (
                     <div
                       key={label as string}
-                      className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm"
+                      className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm dark:border-[#1F2A3D] dark:bg-[#151E2E] dark:shadow-none dark:ring-1 dark:ring-white/5"
                     >
                       <Icon className="h-5 w-5 text-primary" />
-                      <p className="mt-4 text-xs font-medium text-slate-500">
+                      <p className="mt-4 text-xs font-medium text-slate-500 dark:text-slate-400">
                         {label as string}
                       </p>
-                      <p className="mt-1 text-2xl font-bold text-navy">
+                      <p className="mt-1 text-2xl font-bold text-navy dark:text-white">
                         {value as string}
                       </p>
                     </div>
@@ -163,12 +164,12 @@ export function LandingPage() {
                 </div>
 
                 <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_0.8fr]">
-                  <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
+                  <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm dark:border-[#1F2A3D] dark:bg-[#151E2E] dark:shadow-none dark:ring-1 dark:ring-white/5">
                     <div className="flex items-center justify-between">
-                      <p className="font-semibold text-navy">
+                      <p className="font-semibold text-navy dark:text-white">
                         Subject performance
                       </p>
-                      <span className="text-xs text-slate-500">This week</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">This week</span>
                     </div>
                     <div className="mt-5 flex h-40 items-end gap-3">
                       {[68, 72, 52, 65, 80].map((value, index) => (
@@ -180,7 +181,7 @@ export function LandingPage() {
                             className="w-full rounded-t-xl bg-gradient-to-t from-primary to-blue-300"
                             style={{ height: `${value * 1.45}px` }}
                           />
-                          <span className="text-[10px] font-medium text-slate-500">
+                          <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
                             S{index + 1}
                           </span>
                         </div>
@@ -188,18 +189,18 @@ export function LandingPage() {
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
-                    <p className="font-semibold text-navy">AI recommendation</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                  <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm dark:border-blue-500/20 dark:bg-blue-500/10 dark:shadow-none dark:ring-1 dark:ring-white/5">
+                    <p className="font-semibold text-navy dark:text-white">AI recommendation</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
                       Focus on Physics waves for 18 minutes, then answer 20
                       English questions.
                     </p>
                     <div className="mt-5">
-                      <div className="mb-2 flex justify-between text-xs font-medium text-slate-500">
+                      <div className="mb-2 flex justify-between text-xs font-medium text-slate-500 dark:text-slate-400">
                         <span>Weekly target</span>
                         <span>72%</span>
                       </div>
-                      <Progress value={72} />
+                      <Progress value={72} className="dark:bg-slate-700" />
                     </div>
                   </div>
                 </div>
@@ -209,9 +210,9 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="bg-white px-4 py-10 sm:py-14">
+      <section className="bg-white px-4 py-10 dark:bg-[#0F172A] sm:py-14">
         <div className="container">
-          <div className="overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] p-7 text-white shadow-[0_20px_50px_rgba(37,99,235,0.2)] sm:p-10">
+          <div className="overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] p-7 text-white shadow-[0_20px_50px_rgba(37,99,235,0.2)] dark:bg-[#111C31] dark:ring-1 dark:ring-blue-500/20 sm:p-10">
             <p className="text-sm font-bold uppercase tracking-[0.12em] text-blue-100">Free JAMB diagnostic</p>
             <h2 className="mt-3 max-w-2xl text-3xl font-bold tracking-normal sm:text-4xl">Only 24% of JAMB candidates scored above 200 in 2026</h2>
             <p className="mt-3 max-w-xl text-blue-100">Find out where you stand in 5 minutes - completely free.</p>
@@ -222,30 +223,30 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="bg-white py-10">
+      <section className="bg-white py-10 dark:bg-[#0B1220]">
         <div className="container grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map(([value, label]) => (
             <div
               key={label}
-              className="rounded-2xl border border-border bg-white p-5 text-center shadow-sm"
+              className="rounded-2xl border border-border bg-white p-5 text-center shadow-sm dark:bg-[#151E2E] dark:shadow-none dark:ring-1 dark:ring-white/5"
             >
               <p className="text-3xl font-bold text-primary">{value}</p>
-              <p className="mt-1 text-sm font-medium text-slate-500">{label}</p>
+              <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">{label}</p>
             </div>
           ))}
         </div>
       </section>
 
-      <section id="features" className="bg-[#F8FAFC] py-16">
+      <section id="features" className="bg-[#F8FAFC] py-16 dark:bg-[#0F172A]">
         <div className="container">
           <div className="mx-auto max-w-2xl text-center">
-            <Badge className="border-blue-200 bg-white text-primary">
+            <Badge className="border-blue-200 bg-white text-primary dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-400">
               Feature showcase
             </Badge>
-            <h2 className="mt-4 text-4xl font-bold tracking-normal text-navy">
+            <h2 className="mt-4 text-4xl font-bold tracking-normal text-navy dark:text-white">
               Everything students need to improve.
             </h2>
-            <p className="mt-3 text-base leading-7 text-slate-600">
+            <p className="mt-3 text-base leading-7 text-slate-600 dark:text-slate-400">
               A clean study system that combines practice, feedback, analytics,
               and motivation.
             </p>
@@ -253,15 +254,15 @@ export function LandingPage() {
           <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {features.map((feature, index) => (
               <Reveal key={feature.title} delay={index * 0.04}>
-                <Card className="h-full border-border bg-white shadow-[0_16px_44px_rgba(15,23,42,0.06)]">
+                <Card className="h-full border-border bg-white shadow-[0_16px_44px_rgba(15,23,42,0.06)] dark:border-slate-800 dark:bg-[#151E2E] dark:shadow-none dark:ring-1 dark:ring-white/5">
                   <CardContent className="p-6">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-softblue text-primary">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-softblue text-primary dark:bg-blue-500/10">
                       <feature.icon className="h-6 w-6" />
                     </div>
-                    <h3 className="mt-5 text-lg font-bold text-navy">
+                    <h3 className="mt-5 text-lg font-bold text-navy dark:text-white">
                       {feature.title}
                     </h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                    <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
                       {feature.body}
                     </p>
                   </CardContent>
@@ -272,25 +273,25 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section id="pricing" className="bg-white py-16">
+      <section id="pricing" className="bg-white py-16 dark:bg-[#0B1220]">
         <div className="container">
           <div className="mx-auto max-w-2xl text-center">
-            <Badge className="border-blue-200 bg-softblue text-primary">Simple pricing</Badge>
-            <h2 className="mt-4 text-4xl font-bold tracking-normal text-navy">
+            <Badge className="border-blue-200 bg-softblue text-primary dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-400">Simple pricing</Badge>
+            <h2 className="mt-4 text-4xl font-bold tracking-normal text-navy dark:text-white">
               Start free. Upgrade when you&apos;re ready for exam mode.
             </h2>
-            <p className="mt-3 text-base leading-7 text-slate-600">
+            <p className="mt-3 text-base leading-7 text-slate-600 dark:text-slate-400">
               Build a daily practice habit for free, then unlock full mock exams and deeper study tools with one straightforward annual payment.
             </p>
           </div>
 
           <div className="mx-auto mt-10 grid max-w-4xl gap-5 md:grid-cols-2">
-            <Card className="border-border bg-white shadow-sm">
+            <Card className="border-border bg-white shadow-sm dark:border-slate-800 dark:bg-[#151E2E] dark:shadow-none dark:ring-1 dark:ring-white/5">
               <CardContent className="p-7">
-                <p className="text-lg font-bold text-navy">Free</p>
-                <p className="mt-4 text-4xl font-bold text-navy">₦0</p>
-                <p className="mt-1 text-sm text-slate-500">A solid place to begin.</p>
-                <ul className="mt-6 space-y-3 text-sm text-slate-600">
+                <p className="text-lg font-bold text-navy dark:text-white">Free</p>
+                <p className="mt-4 text-4xl font-bold text-navy dark:text-white">₦0</p>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">A solid place to begin.</p>
+                <ul className="mt-6 space-y-3 text-sm text-slate-600 dark:text-slate-300">
                   {["Unlimited subject practice", "Instant answer feedback", "Score tracking and weekly quiz", "Study streaks and progress basics"].map((item) => (
                     <li key={item} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />{item}</li>
                   ))}
@@ -299,35 +300,35 @@ export function LandingPage() {
               </CardContent>
             </Card>
 
-            <Card className="relative overflow-hidden border-primary bg-gradient-to-br from-[#EFF6FF] via-white to-blue-50 shadow-[0_22px_56px_rgba(37,99,235,0.16)]">
+            <Card className="relative overflow-hidden border-primary bg-gradient-to-br from-[#EFF6FF] via-white to-blue-50 shadow-[0_22px_56px_rgba(37,99,235,0.16)] dark:border-blue-500 dark:bg-[#151E2E] dark:from-[#151E2E] dark:via-[#151E2E] dark:to-[#151E2E] dark:shadow-none dark:ring-2 dark:ring-blue-500/30">
               <div className="absolute right-5 top-5"><Badge className="bg-primary text-white">Best for exam prep</Badge></div>
               <CardContent className="p-7">
-                <div className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" /><p className="text-lg font-bold text-navy">Prepcore Pro</p></div>
-                <p className="mt-4 text-4xl font-bold text-navy">₦3,000</p>
-                <p className="mt-1 text-sm text-slate-500">One payment for one year of access.</p>
-                <ul className="mt-6 space-y-3 text-sm text-slate-700">
+                <div className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" /><p className="text-lg font-bold text-navy dark:text-white">Prepcore Pro</p></div>
+                <p className="mt-4 text-4xl font-bold text-navy dark:text-white">₦3,000</p>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">One payment for one year of access.</p>
+                <ul className="mt-6 space-y-3 text-sm text-slate-700 dark:text-slate-300">
                   {["Everything in Free", "Full JAMB and WAEC mock exams", "60 English + 40 questions per selected subject", "Subject switching, timers, question maps and results", "AI explanations and all flashcards"].map((item) => (
                     <li key={item} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />{item}</li>
                   ))}
                 </ul>
                 <Button asChild className="mt-7 w-full"><Link href="/upgrade">Unlock Pro exam mode</Link></Button>
-                <p className="mt-3 text-center text-xs text-slate-500">Secure Flutterwave payment · Access activates after verification</p>
+                <p className="mt-3 text-center text-xs text-slate-500 dark:text-slate-400">Secure Flutterwave payment · Access activates after verification</p>
               </CardContent>
             </Card>
           </div>
         </div>
       </section>
 
-      <section id="results" className="bg-white py-16">
+      <section id="results" className="bg-white py-16 dark:bg-[#0B1220]">
         <div className="container grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
           <div>
-            <Badge className="border-blue-200 bg-softblue text-primary">
+            <Badge className="border-blue-200 bg-softblue text-primary dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-400">
               Social proof
             </Badge>
-            <h2 className="mt-4 text-4xl font-bold tracking-normal text-navy">
+            <h2 className="mt-4 text-4xl font-bold tracking-normal text-navy dark:text-white">
               Built to make progress feel possible.
             </h2>
-            <p className="mt-3 text-base leading-7 text-slate-600">
+            <p className="mt-3 text-base leading-7 text-slate-600 dark:text-slate-400">
               Prepcore motivates students with streaks, milestones, score
               movement, and clear next steps.
             </p>
@@ -347,17 +348,17 @@ export function LandingPage() {
                 quote: "The explanations are short and actually make sense.",
               },
             ].map(({ name, quote }) => (
-              <Card key={name} className="border-border bg-white shadow-sm">
+              <Card key={name} className="border-border bg-white shadow-sm dark:border-slate-800 dark:bg-[#151E2E] dark:shadow-none dark:ring-1 dark:ring-white/5">
                 <CardContent className="p-5">
                   <div className="flex gap-1 text-[#D97706]">
                     {Array.from({ length: 5 }).map((_, starIndex) => (
                       <Star key={starIndex} className="h-4 w-4 fill-current" />
                     ))}
                   </div>
-                  <p className="mt-4 text-sm font-medium leading-6 text-navy">
+                  <p className="mt-4 text-sm font-medium leading-6 text-navy dark:text-slate-300">
                     &quot;{quote}&quot;
                   </p>
-                  <p className="mt-5 text-xs font-semibold text-slate-500">
+                  <p className="mt-5 text-xs font-semibold text-slate-500 dark:text-slate-400">
                     {name}
                   </p>
                 </CardContent>
@@ -367,13 +368,13 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section id="faq" className="bg-[#F8FAFC] py-16">
+      <section id="faq" className="bg-[#F8FAFC] py-16 dark:bg-[#0F172A]">
         <div className="container grid gap-8 md:grid-cols-[0.8fr_1.2fr]">
           <div>
-            <h2 className="text-4xl font-bold tracking-normal text-navy">
+            <h2 className="text-4xl font-bold tracking-normal text-navy dark:text-white">
               Questions students ask first.
             </h2>
-            <p className="mt-3 text-base leading-7 text-slate-600">
+            <p className="mt-3 text-base leading-7 text-slate-600 dark:text-slate-400">
               Simple answers for students and parents checking the platform.
             </p>
           </div>
@@ -381,12 +382,12 @@ export function LandingPage() {
             {faqs.map((faq) => (
               <details
                 key={faq.question}
-                className="rounded-2xl border border-border bg-white p-5 shadow-sm"
+                className="rounded-2xl border border-border bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#151E2E] dark:shadow-none dark:ring-1 dark:ring-white/5"
               >
-                <summary className="cursor-pointer font-semibold text-navy">
+                <summary className="cursor-pointer font-semibold text-navy dark:text-white">
                   {faq.question}
                 </summary>
-                <p className="mt-3 text-sm leading-6 text-slate-600">
+                <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-400">
                   {faq.answer}
                 </p>
               </details>
@@ -395,37 +396,37 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="bg-white py-16">
+      <section className="bg-white py-16 dark:bg-[#0F172A]">
         <div className="container text-center">
           <Handshake className="mx-auto h-8 w-8 text-primary" />
           <Badge className="mt-4 border-blue-200 bg-softblue text-primary">
             Partner program
           </Badge>
-          <h2 className="mx-auto mt-4 max-w-3xl text-3xl font-bold tracking-normal text-navy sm:text-4xl">
+          <h2 className="mx-auto mt-4 max-w-3xl text-3xl font-bold tracking-normal text-navy dark:text-white sm:text-4xl">
             Help students win. Earn with every Pro referral.
           </h2>
-          <p className="mx-auto mt-3 max-w-2xl text-base leading-7 text-slate-600">
+          <p className="mx-auto mt-3 max-w-2xl text-base leading-7 text-slate-600 dark:text-slate-400">
             Tutors, schools, lesson centres, and education creators earn ₦600
             whenever a student they refer pays for Prepcore Pro.
           </p>
           <Link
             href="/partners/register"
-            className="mt-6 inline-flex items-center gap-2 border-b-2 border-dotted border-primary pb-1 text-lg font-bold text-primary transition hover:border-solid hover:text-navy"
+            className="mt-6 inline-flex items-center gap-2 border-b-2 border-dotted border-primary pb-1 text-lg font-bold text-primary transition hover:border-solid hover:text-navy dark:text-[#60A5FA] dark:hover:text-white"
           >
             Become a Prepcore partner <Handshake className="h-4 w-4" />
           </Link>
         </div>
       </section>
 
-      <section className="bg-white py-16">
+      <section className="bg-white py-16 dark:bg-[#0B1220]">
         <div className="container">
-          <div className="soft-blue-gradient grid items-center gap-8 rounded-[2rem] border border-border p-6 shadow-soft md:grid-cols-[1fr_18rem_auto] md:p-10">
+          <div className="soft-blue-gradient grid items-center gap-8 rounded-[2rem] border border-border p-6 shadow-soft dark:bg-[#151E2E] dark:shadow-none dark:ring-1 dark:ring-white/5 md:grid-cols-[1fr_18rem_auto] md:p-10">
             <div>
               <CheckCircle2 className="h-8 w-8 text-success" />
-              <h2 className="mt-5 max-w-3xl text-4xl font-bold tracking-normal text-navy">
+              <h2 className="mt-5 max-w-3xl text-4xl font-bold tracking-normal text-navy dark:text-white">
                 Join the students getting early access to Prepcore.
               </h2>
-              <p className="mt-3 text-slate-600">
+              <p className="mt-3 text-slate-600 dark:text-slate-400">
                 Past questions, mock exams, AI explanations, and score tracking
                 in one modern workspace.
               </p>

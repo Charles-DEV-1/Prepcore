@@ -1,11 +1,12 @@
 "use client";
 
-import { ThemeProvider } from "next-themes";
+// Prepcore — Dark Mode
+import { ThemeProvider } from "@/components/theme-provider";
 import { QueryProvider } from "@/providers/query-provider";
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" disableTransitionOnChange>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
       <QueryProvider>{children}</QueryProvider>
     </ThemeProvider>
   );
