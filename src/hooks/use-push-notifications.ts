@@ -34,10 +34,12 @@ const DEFAULT_PREFERENCES: ReminderPreference = {
 };
 
 type PreferencesResponse = {
-  last_reminder_sent_at: string | null;
-  streak_reminders_enabled: boolean;
-  study_reminders_enabled: boolean;
-  timezone: string | null;
+  preferences: {
+    last_reminder_sent_at: string | null;
+    streak_reminders_enabled: boolean;
+    study_reminders_enabled: boolean;
+    timezone: string | null;
+  };
 };
 
 type PreferencesUpdate = {
@@ -103,8 +105,9 @@ async function readJsonResponse<T>(response: Response, fallback: string) {
 }
 
 function mapPreferencesResponse(
-  preferences: PreferencesResponse,
+  response: PreferencesResponse,
 ): ReminderPreference {
+  const preferences = response.preferences;
   return {
     lastReminderSentAt: preferences.last_reminder_sent_at,
     streakReminders: preferences.streak_reminders_enabled,
