@@ -3,6 +3,7 @@
 // Prepcore — Dark Mode
 import { ThemeProvider } from "@/components/theme-provider";
 import { QueryProvider } from "@/providers/query-provider";
+import { PwaRuntime } from "@/components/pwa-runtime";
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
@@ -13,7 +14,10 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       enableSystem={false}
       disableTransitionOnChange
     >
-      <QueryProvider>{children}</QueryProvider>
+      <QueryProvider>
+        <PwaRuntime />
+        {children}
+      </QueryProvider>
     </ThemeProvider>
   );
 }

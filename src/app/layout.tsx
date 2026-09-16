@@ -10,6 +10,12 @@ export const metadata: Metadata = {
   },
   description: siteConfig.description,
   metadataBase: new URL(siteConfig.url),
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    title: "Prepcore",
+    statusBarStyle: "black-translucent",
+  },
   keywords: siteConfig.keywords,
   applicationName: siteConfig.name,
   authors: [{ name: "Charles Ozebo", url: "https://www.linkedin.com/in/ozebo-charles-b88471343/" }],
