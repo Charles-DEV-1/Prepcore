@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { InstallPrompt } from "@/components/install-prompt";
+import { ReminderPrompt } from "@/components/notifications/reminder-prompt";
 
 // Prepcore - Online PWA foundation
 export function PwaRuntime() {
@@ -11,5 +12,10 @@ export function PwaRuntime() {
     }
   }, []);
 
-  return <InstallPrompt />;
+  return (
+    <>
+      <InstallPrompt />
+      <ReminderPrompt />
+    </>
+  );
 }
