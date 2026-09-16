@@ -11,6 +11,7 @@ type BeforeInstallPromptEvent = Event & {
 };
 
 const DISMISSED_AT_KEY = "prepcore_install_prompt_dismissed_at";
+const INSTALLATION_ID_KEY = "prepcore_installation_id";
 const DISMISS_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 function isStandalone() {
@@ -18,6 +19,38 @@ function isStandalone() {
     window.matchMedia("(display-mode: standalone)").matches ||
     ("standalone" in navigator && Boolean(navigator.standalone))
   );
+}
+
+function getPlatform() {
+  const userAgent = navigator.userAgent.toLowerCase();
+  if (/iphone|ipad|ipod/.test(userAgent)) return "ios" as const;
+  if (/android/.test(userAgent)) return "android" as const;
+  if (window.matchMedia("(min-width: 768px)").matches) return "desktop" as const;
+  return "unknown" as const;
+}
+
+function getInstallationId() {
+  const existing = localStorage.getItem(INSTALLATION_ID_KEY);
+  if (existing) return existing;
+  const installationId = crypto.randomUUID();
+  localStorage.setItem(INSTALLATION_ID_KEY, installationId);
+  return installationId;
+}
+
+async function recordInstallation() {
+  try {
+    await fetch("/api/pwa/install", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        installationId: getInstallationId(),
+        platform: getPlatform(),
+      }),
+      keepalive: true,
+    });
+  } catch {
+    // Installation analytics must never interrupt the install experience.
+  }
 }
 
 // Prepcore - Online PWA foundation
@@ -40,9 +73,18 @@ export function InstallPrompt() {
       setVisible(true);
     };
 
+    const handleAppInstalled = () => {
+      void recordInstallation();
+      setVisible(false);
+      setInstallEvent(null);
+    };
+
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    return () =>
+    window.addEventListener("appinstalled", handleAppInstalled);
+    return () => {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleAppInstalled);
+    };
   }, []);
 
   function dismiss() {
@@ -55,6 +97,9 @@ export function InstallPrompt() {
     if (!installEvent) return;
     await installEvent.prompt();
     const choice = await installEvent.userChoice;
+    if (choice.outcome === "accepted") {
+      void recordInstallation();
+    }
     if (choice.outcome === "dismissed") {
       localStorage.setItem(DISMISSED_AT_KEY, String(Date.now()));
     }
