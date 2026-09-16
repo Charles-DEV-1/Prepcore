@@ -135,6 +135,148 @@ Responsibilities:
 
 Webbi’s work should be focused on the integration layer between the app and the push service.
 
+### Ownership boundaries
+
+To avoid conflicting edits, each person should own these areas unless the team agrees otherwise:
+
+| Area | Primary owner | Supporting owner |
+| --- | --- | --- |
+| Database migrations and reminder eligibility logic | Michael | Webbi |
+| Push provider client and server-side delivery adapter | Michael | Webbi |
+| Subscription and preference API routes | Webbi | Michael |
+| Browser permission and subscription UI | Marcus | Webbi |
+| Service worker push and click handlers | Marcus | Michael |
+| Manual test endpoint and delivery diagnostics | Webbi | Michael |
+| Final integration review | Michael | Marcus and Webbi |
+
+Do not rewrite another person's area directly. Open a short discussion first, or add the change to your own branch and mention it in the pull request.
+
+### Shared contracts before coding
+
+Before implementation begins, Michael, Marcus, and Webbi must agree on these contracts in the pull request or team chat:
+
+- API paths and HTTP methods for subscribe, unsubscribe, preferences, and manual test delivery.
+- The exact browser subscription payload fields: `endpoint`, `p256dh`, `auth`, and `platform`.
+- The notification payload fields: `title`, `body`, `url`, and a stable notification type.
+- The allowed notification types, beginning with `streak_reminder`.
+- Authentication and authorization rules for every API route.
+- The push provider choice: Firebase Cloud Messaging or VAPID/web-push.
+- The required environment variable names. Secrets must be stored in local environment files or Vercel, never in Git.
+
+Once agreed, these contracts should not be changed silently. A contract change must be called out in the pull request description and communicated to every affected owner.
+
+---
+
+## Git Workflow and Integration Rules
+
+The repository uses this promotion path:
+
+```text
+feature branch -> staging -> main
+```
+
+- `main` is production. Nobody should push directly to `main`.
+- `staging` is the integration branch. Pull requests from the team must target `staging`.
+- Each person works on a separate feature branch created from the latest `staging`.
+- The owner of a feature branch opens the pull request; only the project owner or an assigned reviewer merges it.
+
+### Branch names
+
+Use these branch names unless the team agrees on a more specific name:
+
+- Michael: `feature/notification-backend`
+- Marcus: `feature/notification-ux`
+- Webbi: `feature/notification-api-testing`
+
+If a task needs to be split into smaller branches, use the same prefix, for example `feature/notification-schema` or `feature/notification-service-worker`.
+
+### Before creating a branch
+
+Each developer must start from the current integration branch:
+
+```powershell
+git switch staging
+git pull origin staging
+git switch -c feature/your-branch-name
+```
+
+Do not create a feature branch from an old local copy of `main`.
+
+### Commit rules
+
+Commits must be small, focused, and easy to review. Use messages that describe one completed change:
+
+```text
+feat: add notification preference schema
+feat: add push subscription API
+feat: add browser reminder settings
+test: add reminder deduplication coverage
+fix: remove expired push subscriptions
+```
+
+Do not mix unrelated formatting, refactoring, dependency upgrades, or personal environment files into a notification commit. Never commit `.env.local`, service-role keys, VAPID private keys, Firebase service-account files, or other secrets.
+
+### Pull request requirements
+
+Every pull request must target `staging`, not `main`, and must include:
+
+- what was implemented
+- the files or areas changed
+- the API or data contract used
+- environment variables required, listed by name only and without secret values
+- how the change was tested
+- known limitations or follow-up work
+- screenshots or a short recording for frontend changes
+- manual test instructions for notification behavior
+
+Before opening the pull request, run:
+
+```powershell
+npm run typecheck
+npm run lint
+npm run build
+```
+
+The author must fix failing checks before requesting review. The author should also rebase or update their branch from `staging` if the branch has been open while other work was merged.
+
+### Merge order
+
+Merge the work in this order unless the team identifies a dependency that requires another order:
+
+1. Michael creates the schema, shared server types, and core reminder rules.
+2. Webbi adds the subscription, preference, and manual test API routes against those contracts.
+3. Marcus connects the browser permission flow and settings UI to the agreed API routes.
+4. Michael and Webbi connect the scheduler and push delivery, then test the complete path.
+5. Marcus and Webbi complete browser, mobile, and installed-PWA verification.
+
+If a pull request depends on another pull request, write the dependency clearly at the top of the description. Do not merge code that imports an API, type, table, or environment variable that does not yet exist in `staging`.
+
+### Integration testing after merges
+
+After each approved pull request is merged into `staging`, the project owner updates the local branch and tests the combined application:
+
+```powershell
+git switch staging
+git pull origin staging
+npm install
+npm run typecheck
+npm run lint
+npm run build
+npm run dev
+```
+
+Test the application at `http://localhost:3000` while signed in with a staging/test account. Verify both the existing website features and the notification flow. A merge should be reverted or fixed with a follow-up pull request if it breaks an existing feature.
+
+### Promotion to production
+
+Only after the complete `staging` branch passes integration testing should the project owner open:
+
+```text
+staging -> main
+```
+
+The final pull request must confirm that typecheck, lint, build, authentication, PWA installation, permission handling, subscription saving, notification delivery, click-through routing, and reminder deduplication were tested. Merge this pull request only after approval. The merge to `main` is what triggers the existing Vercel production deployment.
+
 ---
 
 ## Team Deliverables

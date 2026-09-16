@@ -163,6 +163,21 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["feedback_prompt_state"]["Row"]>;
         Relationships: [];
       };
+      pwa_installations: {
+        Row: {
+          id: string;
+          installation_id: string;
+          user_id: string | null;
+          platform: "android" | "ios" | "desktop" | "unknown";
+          installed_at: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["pwa_installations"]["Row"]> & {
+          installation_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["pwa_installations"]["Row"]>;
+        Relationships: [];
+      };
       answers: {
         Row: {
           id: string;
