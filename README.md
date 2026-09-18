@@ -41,3 +41,5 @@ supabase/
 4. Run `npm run dev`.
 
 The public landing page can render without Supabase credentials. Authenticated actions require Supabase environment variables.
+
+Deployment verification marker: production redeploy trigger.
