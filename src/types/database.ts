@@ -240,6 +240,23 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["notification_logs"]["Row"]>;
         Relationships: [];
       };
+      notification_scheduler_runs: {
+        Row: {
+          id: string;
+          started_at: string;
+          completed_at: string | null;
+          status: "running" | "completed" | "failed";
+          considered: number;
+          sent: number;
+          failed: number;
+          expired: number;
+          error_message: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["notification_scheduler_runs"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["notification_scheduler_runs"]["Row"]>;
+        Relationships: [];
+      };
       answers: {
         Row: {
           id: string;

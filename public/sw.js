@@ -1,4 +1,4 @@
-const VERSION = "prepcore-static-v1";
+const VERSION = "prepcore-static-v2";
 const STATIC_CACHE = `${VERSION}-assets`;
 const OFFLINE_URL = "/offline";
 const PERSONALIZED_PATHS = [
@@ -130,6 +130,10 @@ function getSafeAppUrl(path) {
 self.addEventListener("push", (event) => {
   const payload = readNotificationPayload(event.data);
   const url = getSafeAppUrl(payload.url);
+  const tag =
+    payload.type === "test"
+      ? `prepcore-test-${Date.now()}`
+      : payload.type || "prepcore-study-reminder";
 
   event.waitUntil(
     self.registration.showNotification(payload.title, {
@@ -138,7 +142,7 @@ self.addEventListener("push", (event) => {
       data: { type: payload.type, url },
       icon: "/favicons/android-chrome-192x192.png",
       requireInteraction: false,
-      tag: payload.type || "prepcore-study-reminder",
+      tag,
     }),
   );
 });

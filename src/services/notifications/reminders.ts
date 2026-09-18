@@ -2,16 +2,23 @@ import { sendWebPush } from "@/lib/notifications";
 import { createServiceRoleClient } from "@/services/supabase/admin";
 
 const INACTIVITY_WINDOW_MS = 24 * 60 * 60 * 1000;
-const REMINDER_TYPE = "streak_reminder";
 
-export async function sendDueStreakReminders() {
+type ReminderResult = {
+  considered: number;
+  sent: number;
+  failed: number;
+  expired: number;
+};
+
+export async function sendDueStreakReminders(): Promise<ReminderResult> {
   const admin = createServiceRoleClient();
   const cutoff = new Date(Date.now() - INACTIVITY_WINDOW_MS).toISOString();
   const { data: preferences, error: preferencesError } = await admin
     .from("notification_preferences")
-    .select("user_id, last_reminder_sent_at")
-    .eq("study_reminders_enabled", true)
-    .eq("streak_reminders_enabled", true);
+    .select(
+      "user_id, last_reminder_sent_at, study_reminders_enabled, streak_reminders_enabled",
+    )
+    .or("study_reminders_enabled.eq.true,streak_reminders_enabled.eq.true");
   if (preferencesError) throw preferencesError;
 
   let considered = 0;
@@ -37,11 +44,20 @@ export async function sendDueStreakReminders() {
     if (subscriptionError) throw subscriptionError;
     if (!subscriptions?.length) continue;
 
+    const reminderType = preference.streak_reminders_enabled
+      ? "streak_reminder"
+      : "study_reminder";
     const payload = {
-      title: "Keep your streak alive",
-      body: "It has been 24 hours since your last study session. Come back and keep going.",
+      title:
+        reminderType === "streak_reminder"
+          ? "Keep your streak alive"
+          : "Study reminder",
+      body:
+        reminderType === "streak_reminder"
+          ? "It has been 24 hours since your last study session. Come back and keep going."
+          : "Your Prepcore study session is waiting. Come back for a short practice round.",
       url: "/dashboard" as const,
-      type: "streak_reminder" as const,
+      type: reminderType as "streak_reminder" | "study_reminder",
     };
     let userSent = false;
 
@@ -57,7 +73,7 @@ export async function sendDueStreakReminders() {
         await admin.from("notification_logs").insert({
           user_id: preference.user_id,
           subscription_id: subscription.id,
-          notification_type: REMINDER_TYPE,
+          notification_type: reminderType,
           title: payload.title,
           body: payload.body,
           url: payload.url,
@@ -66,6 +82,13 @@ export async function sendDueStreakReminders() {
       } catch (error) {
         failed += 1;
         const statusCode = error && typeof error === "object" && "statusCode" in error ? String(error.statusCode) : "unknown";
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error("notification_delivery_failed", {
+          subscriptionId: subscription.id,
+          userId: preference.user_id,
+          statusCode,
+          errorMessage,
+        });
         const isExpired = statusCode === "404" || statusCode === "410";
         if (isExpired) {
           expired += 1;
@@ -74,12 +97,12 @@ export async function sendDueStreakReminders() {
         await admin.from("notification_logs").insert({
           user_id: preference.user_id,
           subscription_id: subscription.id,
-          notification_type: REMINDER_TYPE,
+          notification_type: reminderType,
           title: payload.title,
           body: payload.body,
           url: payload.url,
           delivery_status: isExpired ? "expired" : "failed",
-          error_code: statusCode,
+          error_code: `${statusCode}: ${errorMessage}`.slice(0, 500),
         } as never);
       }
     }

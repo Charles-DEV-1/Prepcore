@@ -34,6 +34,7 @@ export async function POST(request: Request) {
   };
   let sent = 0;
   let failed = 0;
+  const errors: string[] = [];
   for (const subscription of subscriptions) {
     try {
       await sendWebPush({
@@ -46,6 +47,13 @@ export async function POST(request: Request) {
     } catch (error) {
       failed += 1;
       const statusCode = error && typeof error === "object" && "statusCode" in error ? String(error.statusCode) : "unknown";
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      errors.push(errorMessage);
+      console.error("Web push test delivery failed", {
+        subscriptionId: subscription.id,
+        statusCode,
+        errorMessage,
+      });
       if (statusCode === "404" || statusCode === "410") {
         await admin.from("push_subscriptions").update({ is_active: false, updated_at: new Date().toISOString() } as never).eq("id", subscription.id);
       }
@@ -53,5 +61,8 @@ export async function POST(request: Request) {
     }
   }
 
-  return noStoreJson({ success: sent > 0, sent, failed });
+  return noStoreJson(
+    { success: sent > 0, sent, failed, errors: errors.length ? errors : undefined },
+    { status: sent > 0 ? 200 : 502 },
+  );
 }
