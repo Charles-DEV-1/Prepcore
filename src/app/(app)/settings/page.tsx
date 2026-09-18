@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Bell, Check, Moon, ShieldCheck, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ReminderSettingsCard } from "@/components/notifications/reminder-settings-card";
 
 export default function SettingsPage() {
   const { resolvedTheme, setTheme } = useTheme();
@@ -54,31 +55,7 @@ export default function SettingsPage() {
           </Card>
         ))}
       </div>
-      <Card className="border-border bg-card shadow-sm">
-        <CardHeader>
-          <CardTitle>Notification preferences</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2">
-          {[
-            "Daily study reminder",
-            "Mock exam summary",
-            "Weak-topic alerts",
-            "Leaderboard movement",
-          ].map((item) => (
-            <label
-              key={item}
-              className="flex items-center gap-3 rounded-2xl border border-border p-4 text-sm font-medium text-slate-600"
-            >
-              <input
-                type="checkbox"
-                defaultChecked
-                className="h-4 w-4 accent-[#2563EB]"
-              />
-              {item}
-            </label>
-          ))}
-        </CardContent>
-      </Card>
+      <ReminderSettingsCard />
       <Card className="border-border bg-card shadow-sm">
         <CardHeader>
           <CardTitle>Appearance</CardTitle>
@@ -87,7 +64,11 @@ export default function SettingsPage() {
           </p>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-3 sm:grid-cols-2" role="group" aria-label="Appearance mode">
+          <div
+            className="grid gap-3 sm:grid-cols-2"
+            role="group"
+            aria-label="Appearance mode"
+          >
             {[
               { value: "light", label: "Light mode", icon: Sun },
               { value: "dark", label: "Dark mode", icon: Moon },

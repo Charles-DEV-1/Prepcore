@@ -178,6 +178,85 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["pwa_installations"]["Row"]>;
         Relationships: [];
       };
+      notification_preferences: {
+        Row: {
+          user_id: string;
+          study_reminders_enabled: boolean;
+          streak_reminders_enabled: boolean;
+          timezone: string;
+          last_reminder_sent_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["notification_preferences"]["Row"]> & {
+          user_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["notification_preferences"]["Row"]>;
+        Relationships: [];
+      };
+      push_subscriptions: {
+        Row: {
+          id: string;
+          user_id: string;
+          endpoint: string;
+          expiration_time: number | null;
+          p256dh: string;
+          auth: string;
+          platform: "android" | "ios" | "desktop" | "unknown";
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["push_subscriptions"]["Row"]> & {
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["push_subscriptions"]["Row"]>;
+        Relationships: [];
+      };
+      notification_logs: {
+        Row: {
+          id: string;
+          user_id: string;
+          subscription_id: string | null;
+          notification_type: string;
+          title: string;
+          body: string;
+          url: string;
+          delivery_status: "sent" | "failed" | "expired" | "skipped";
+          error_code: string | null;
+          sent_at: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["notification_logs"]["Row"]> & {
+          user_id: string;
+          notification_type: string;
+          title: string;
+          body: string;
+          delivery_status: "sent" | "failed" | "expired" | "skipped";
+        };
+        Update: Partial<Database["public"]["Tables"]["notification_logs"]["Row"]>;
+        Relationships: [];
+      };
+      notification_scheduler_runs: {
+        Row: {
+          id: string;
+          started_at: string;
+          completed_at: string | null;
+          status: "running" | "completed" | "failed";
+          considered: number;
+          sent: number;
+          failed: number;
+          expired: number;
+          error_message: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["notification_scheduler_runs"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["notification_scheduler_runs"]["Row"]>;
+        Relationships: [];
+      };
       answers: {
         Row: {
           id: string;
