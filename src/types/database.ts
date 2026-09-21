@@ -185,6 +185,12 @@ export type Database = {
           streak_reminders_enabled: boolean;
           timezone: string;
           last_reminder_sent_at: string | null;
+          content_notifications_enabled: boolean;
+          study_tips_enabled: boolean;
+          news_notifications_enabled: boolean;
+          weekly_summary_enabled: boolean;
+          last_content_notification_sent_at: string | null;
+          last_weekly_summary_sent_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -227,6 +233,8 @@ export type Database = {
           url: string;
           delivery_status: "sent" | "failed" | "expired" | "skipped";
           error_code: string | null;
+          content_id: string | null;
+          source: string;
           sent_at: string;
           created_at: string;
         };
@@ -238,6 +246,28 @@ export type Database = {
           delivery_status: "sent" | "failed" | "expired" | "skipped";
         };
         Update: Partial<Database["public"]["Tables"]["notification_logs"]["Row"]>;
+        Relationships: [];
+      };
+      notification_content: {
+        Row: {
+          id: string;
+          notification_type: "study_tip" | "news" | "announcement";
+          title: string;
+          body: string;
+          url: string;
+          status: "draft" | "published" | "archived";
+          scheduled_at: string;
+          expires_at: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["notification_content"]["Row"]> & {
+          notification_type: "study_tip" | "news" | "announcement";
+          title: string;
+          body: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["notification_content"]["Row"]>;
         Relationships: [];
       };
       notification_scheduler_runs: {

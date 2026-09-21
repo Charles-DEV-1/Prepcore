@@ -18,7 +18,14 @@ export type PushPayload = {
   title: string;
   body: string;
   url: "/dashboard" | "/practice";
-  type: "streak_reminder" | "study_reminder" | "test";
+  type:
+    | "streak_reminder"
+    | "study_reminder"
+    | "study_tip"
+    | "news"
+    | "announcement"
+    | "weekly_summary"
+    | "test";
 };
 
 export async function sendWebPush(

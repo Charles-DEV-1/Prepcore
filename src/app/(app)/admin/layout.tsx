@@ -9,6 +9,7 @@ type CookieToSet = { name: string; value: string; options: CookieOptions };
 const adminLinks = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/analytics", label: "Analytics" },
+  { href: "/admin/notifications", label: "Notifications" },
   { href: "/admin/revenue", label: "Revenue" },
   { href: "/admin/users", label: "Users" },
   { href: "/admin/reports", label: "Reports" },

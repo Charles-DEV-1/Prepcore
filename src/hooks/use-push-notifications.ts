@@ -5,6 +5,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 type ReminderPreference = {
   studyReminders: boolean;
   streakReminders: boolean;
+  contentNotifications: boolean;
+  studyTips: boolean;
+  newsNotifications: boolean;
+  weeklySummary: boolean;
   lastReminderSentAt: string | null;
   timezone: string;
 };
@@ -30,6 +34,10 @@ const DEFAULT_PREFERENCES: ReminderPreference = {
   lastReminderSentAt: null,
   studyReminders: false,
   streakReminders: false,
+  contentNotifications: false,
+  studyTips: false,
+  newsNotifications: false,
+  weeklySummary: false,
   timezone: "Africa/Lagos",
 };
 
@@ -38,6 +46,10 @@ type PreferencesResponse = {
     last_reminder_sent_at: string | null;
     streak_reminders_enabled: boolean;
     study_reminders_enabled: boolean;
+    content_notifications_enabled: boolean;
+    study_tips_enabled: boolean;
+    news_notifications_enabled: boolean;
+    weekly_summary_enabled: boolean;
     timezone: string | null;
   };
 };
@@ -45,6 +57,10 @@ type PreferencesResponse = {
 type PreferencesUpdate = {
   streakRemindersEnabled: boolean;
   studyRemindersEnabled: boolean;
+  contentNotificationsEnabled: boolean;
+  studyTipsEnabled: boolean;
+  newsNotificationsEnabled: boolean;
+  weeklySummaryEnabled: boolean;
   timezone: string;
 };
 
@@ -112,6 +128,10 @@ function mapPreferencesResponse(
     lastReminderSentAt: preferences.last_reminder_sent_at,
     streakReminders: preferences.streak_reminders_enabled,
     studyReminders: preferences.study_reminders_enabled,
+    contentNotifications: preferences.content_notifications_enabled,
+    studyTips: preferences.study_tips_enabled,
+    newsNotifications: preferences.news_notifications_enabled,
+    weeklySummary: preferences.weekly_summary_enabled,
     timezone: preferences.timezone ?? getBrowserTimezone(),
   };
 }
@@ -252,7 +272,9 @@ export function usePushNotifications() {
   }, [refreshSubscription]);
 
   const enabledByPreference =
-    preferences.studyReminders || preferences.streakReminders;
+    preferences.studyReminders ||
+    preferences.streakReminders ||
+    preferences.contentNotifications;
 
   const status = useMemo<NotificationStatus>(() => {
     if (isInitializing) return "checking";
@@ -264,16 +286,37 @@ export function usePushNotifications() {
   }, [enabledByPreference, isInitializing, permission, supported]);
 
   const togglePreference = useCallback(
-    async (key: "studyReminders" | "streakReminders", value: boolean) => {
+    async (
+      key:
+        | "studyReminders"
+        | "streakReminders"
+        | "contentNotifications"
+        | "studyTips"
+        | "newsNotifications"
+        | "weeklySummary",
+      value: boolean,
+    ) => {
       setIsBusy(true);
       setMessage(null);
 
       const next = { ...preferences, [key]: value };
+      if (
+        key === "studyTips" ||
+        key === "newsNotifications" ||
+        key === "weeklySummary"
+      ) {
+        next.contentNotifications =
+          next.studyTips || next.newsNotifications || next.weeklySummary;
+      }
 
       try {
         const saved = await updatePreferences({
           studyRemindersEnabled: next.studyReminders,
           streakRemindersEnabled: next.streakReminders,
+          contentNotificationsEnabled: next.contentNotifications,
+          studyTipsEnabled: next.studyTips,
+          newsNotificationsEnabled: next.newsNotifications,
+          weeklySummaryEnabled: next.weeklySummary,
           timezone: next.timezone,
         });
         setPreferencesState(saved);
@@ -336,6 +379,10 @@ export function usePushNotifications() {
       const savedPreferences = await updatePreferences({
         studyRemindersEnabled: true,
         streakRemindersEnabled: true,
+        contentNotificationsEnabled: preferences.contentNotifications,
+        studyTipsEnabled: preferences.studyTips,
+        newsNotificationsEnabled: preferences.newsNotifications,
+        weeklySummaryEnabled: preferences.weeklySummary,
         timezone: getBrowserTimezone(),
       });
       setPreferencesState(savedPreferences);
@@ -351,7 +398,12 @@ export function usePushNotifications() {
     } finally {
       setIsBusy(false);
     }
-  }, []);
+  }, [
+    preferences.contentNotifications,
+    preferences.newsNotifications,
+    preferences.studyTips,
+    preferences.weeklySummary,
+  ]);
 
   const disableReminders = useCallback(async () => {
     setIsBusy(true);
@@ -372,6 +424,10 @@ export function usePushNotifications() {
       const savedPreferences = await updatePreferences({
         studyRemindersEnabled: false,
         streakRemindersEnabled: false,
+        contentNotificationsEnabled: false,
+        studyTipsEnabled: false,
+        newsNotificationsEnabled: false,
+        weeklySummaryEnabled: false,
         timezone: preferences.timezone,
       });
       setSubscription(null);

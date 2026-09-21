@@ -59,7 +59,9 @@ export function ReminderSettingsCard() {
   const current = statusCopy[status];
   const StatusIcon = current.icon;
   const hasActivePreference =
-    preferences.studyReminders || preferences.streakReminders;
+    preferences.studyReminders ||
+    preferences.streakReminders ||
+    preferences.contentNotifications;
 
   return (
     <Card className="border-border bg-card shadow-sm">
@@ -117,6 +119,27 @@ export function ReminderSettingsCard() {
             onChange={(checked) =>
               void togglePreference("studyReminders", checked)
             }
+          />
+          <ReminderToggle
+            checked={preferences.studyTips}
+            description="Receive occasional practical tips that help you study better."
+            disabled={isBusy || isInitializing || status === "unsupported" || status === "blocked"}
+            label="Study tips"
+            onChange={(checked) => void togglePreference("studyTips", checked)}
+          />
+          <ReminderToggle
+            checked={preferences.newsNotifications}
+            description="Hear about useful new content and important Prepcore updates."
+            disabled={isBusy || isInitializing || status === "unsupported" || status === "blocked"}
+            label="Prepcore updates"
+            onChange={(checked) => void togglePreference("newsNotifications", checked)}
+          />
+          <ReminderToggle
+            checked={preferences.weeklySummary}
+            description="Get a short weekly summary of your study activity."
+            disabled={isBusy || isInitializing || status === "unsupported" || status === "blocked"}
+            label="Weekly summary"
+            onChange={(checked) => void togglePreference("weeklySummary", checked)}
           />
           <ReminderToggle
             checked={preferences.streakReminders}

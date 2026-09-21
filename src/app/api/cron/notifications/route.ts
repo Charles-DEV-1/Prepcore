@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { sendDueStreakReminders } from "@/services/notifications/reminders";
+import {
+  sendDueEngagementNotifications,
+  sendDueStreakReminders,
+  sendDueWeeklySummaries,
+} from "@/services/notifications/reminders";
 import { createServiceRoleClient } from "@/services/supabase/admin";
 
 function isAuthorized(request: Request) {
@@ -18,7 +22,20 @@ export async function GET(request: Request) {
     .select("id")
     .single();
   try {
-    const result = await sendDueStreakReminders();
+    const results = await Promise.all([
+      sendDueStreakReminders(),
+      sendDueEngagementNotifications(),
+      sendDueWeeklySummaries(),
+    ]);
+    const result = results.reduce(
+      (total, current) => ({
+        considered: total.considered + current.considered,
+        sent: total.sent + current.sent,
+        failed: total.failed + current.failed,
+        expired: total.expired + current.expired,
+      }),
+      { considered: 0, sent: 0, failed: 0, expired: 0 },
+    );
     if (run?.id) {
       await admin.from("notification_scheduler_runs").update({
         ...result,
