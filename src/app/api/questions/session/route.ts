@@ -13,6 +13,7 @@ type SessionRequest = {
   subjectId?: string;
   examType?: "jamb" | "waec";
   limit?: number;
+  year?: number;
 };
 
 type StoredQuestion = {
@@ -162,6 +163,8 @@ async function handlePost(request: Request) {
   const body = await readSafeJson<SessionRequest>(request);
   const subjectId = body?.subjectId;
   const examType = body?.examType;
+  const requestedYear = body?.year;
+  const year = Number.isInteger(requestedYear) ? requestedYear : undefined;
   const limit = Math.min(
     Math.max(Number(body?.limit) || 25, 1),
     MAX_SESSION_QUESTIONS,
@@ -190,6 +193,7 @@ async function handlePost(request: Request) {
     )
     .eq("subject_id", subjectId)
     .eq("exam_type", examType);
+  if (year) baseQuery.eq("year", year);
   if (!isPro) baseQuery.eq("source", "supabase");
 
   if (!isPro) {
@@ -222,6 +226,7 @@ async function handlePost(request: Request) {
     .eq("subject_id", subjectId)
     .eq("exam_type", examType)
     .limit(limit * 4);
+  if (year) query.eq("year", year);
   const { data: questions, error: questionsError } = await query;
   if (questionsError) {
     return noStoreJson({ error: "Could not load questions" }, { status: 500 });

@@ -14,6 +14,7 @@ import { createClient } from "@/services/supabase/client";
 import { updateStreak } from "@/services/api/streak";
 import {
   getAvailableYears,
+  getYearSessionQuestions,
   getSessionQuestions,
   getSubjectsByExamType,
   type QuestionForSession,
@@ -151,11 +152,15 @@ export function PracticePage() {
     setLoadError(null);
 
     try {
-      const nextQuestions = await getSessionQuestions(
-        selectedSubject.id,
-        25,
-        activeExamType,
-      );
+      const nextQuestions =
+        activeExamType === "waec" && selectedYear
+          ? await getYearSessionQuestions(
+              selectedSubject.id,
+              25,
+              activeExamType,
+              selectedYear,
+            )
+          : await getSessionQuestions(selectedSubject.id, 25, activeExamType);
       setQuestions(nextQuestions);
     } catch (error) {
       setQuestions([]);
@@ -384,11 +389,15 @@ export function PracticePage() {
               ) : !question ? (
                 <div className="py-20 text-center space-y-4">
                   <p className="text-lg font-semibold text-navy">
-                    You finished all {selectedSubject.label} questions.
+                    {questions.length === 0
+                      ? `No ${examLabel} questions are available for this subject${selectedYear ? ` in ${selectedYear}` : ""} yet.`
+                      : `You finished all ${selectedSubject.label} questions.`}
                   </p>
-                  <p className="text-slate-500">
-                    Final score: {score} / {answered} ({accuracy}%)
-                  </p>
+                  {questions.length > 0 && (
+                    <p className="text-slate-500">
+                      Final score: {score} / {answered} ({accuracy}%)
+                    </p>
+                  )}
                   <Button onClick={loadQuestions}>Restart practice</Button>
                 </div>
               ) : (

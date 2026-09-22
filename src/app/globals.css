@@ -125,6 +125,12 @@ body {
   background-color: rgba(37, 99, 235, 0.2);
 }
 
+/* `muted` is a light-mode design token. It is also used by shared controls
+   such as progress tracks, so it needs a dark surface counterpart. */
+.dark .bg-muted {
+  background-color: #172235;
+}
+
 /* Literal light utility surfaces are used by older authenticated screens.
    Keep their light appearance in light mode, but never let them punch white
    holes through the app shell in dark mode. */

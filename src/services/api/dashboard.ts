@@ -4,6 +4,31 @@ import type { ExamType } from "@/types/app";
 
 type AppSupabaseClient = ReturnType<typeof createClient>;
 
+const MINIMUM_RECOMMENDATION_ANSWERS = 3;
+const MAXIMUM_TOPIC_LABEL_LENGTH = 80;
+
+function cleanTopicLabel(value: string | null | undefined) {
+  if (!value) return null;
+  const normalized = value
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // Older imports sometimes put the full question prompt in `topic`. Do not
+  // turn that raw content into a misleading recommendation label.
+  if (
+    !normalized ||
+    normalized.length > MAXIMUM_TOPIC_LABEL_LENGTH ||
+    /<|>|\bthese questions\b|\bif our thoughts\b/i.test(value)
+  ) {
+    return null;
+  }
+
+  return normalized;
+}
+
 export async function getDashboardData(
   supabase: AppSupabaseClient,
   userId: string,
@@ -95,10 +120,8 @@ export async function getDashboardData(
     );
 
   // Calculate accuracy per topic
-  const topicMap: Record<
-    string,
-    { correct: number; total: number; subject: string }
-  > = {};
+  const topicMap: Record<string, { correct: number; total: number; subject: string; topic: string }> = {};
+  const subjectMap: Record<string, { correct: number; total: number }> = {};
 
   if (weakData) {
     weakData.forEach((answer) => {
@@ -108,25 +131,52 @@ export async function getDashboardData(
       const subjectRow = Array.isArray(question?.subject)
         ? question?.subject[0]
         : question?.subject;
-      const topic = question?.topic;
+      const topic = cleanTopicLabel(question?.topic);
       const subject = subjectRow?.name;
       const isCorrect = answer.is_correct;
-      if (!topic || !subject) return;
-      if (!topicMap[topic]) topicMap[topic] = { correct: 0, total: 0, subject };
-      topicMap[topic].total++;
-      if (isCorrect) topicMap[topic].correct++;
+      if (!subject) return;
+
+      if (!subjectMap[subject]) subjectMap[subject] = { correct: 0, total: 0 };
+      subjectMap[subject].total++;
+      if (isCorrect) subjectMap[subject].correct++;
+
+      if (!topic) return;
+      const key = `${subject}:${topic.toLowerCase()}`;
+      if (!topicMap[key]) topicMap[key] = { correct: 0, total: 0, subject, topic };
+      topicMap[key].total++;
+      if (isCorrect) topicMap[key].correct++;
     });
   }
 
-  const weakTopics = Object.entries(topicMap)
-    .map(([topic, { correct, total, subject }]) => ({
+  const weakTopics = Object.values(topicMap)
+    .filter(({ total }) => total >= MINIMUM_RECOMMENDATION_ANSWERS)
+    .map(({ topic, correct, total, subject }) => ({
       topic,
       subject,
       accuracy: Math.round((correct / total) * 100),
+      answered: total,
     }))
     .filter((t) => t.accuracy < 70)
     .sort((a, b) => a.accuracy - b.accuracy)
     .slice(0, 3);
+
+  // When imported question data has no safe topic labels, retain a useful
+  // recommendation from the student's actual subject-level answer history.
+  if (weakTopics.length === 0) {
+    weakTopics.push(
+      ...Object.entries(subjectMap)
+        .filter(([, value]) => value.total >= MINIMUM_RECOMMENDATION_ANSWERS)
+        .map(([subject, { correct, total }]) => ({
+          subject,
+          topic: "Subject review",
+          accuracy: Math.round((correct / total) * 100),
+          answered: total,
+        }))
+        .filter((topic) => topic.accuracy < 70)
+        .sort((a, b) => a.accuracy - b.accuracy)
+        .slice(0, 3),
+    );
+  }
 
   return {
     averageScore,

@@ -228,6 +228,10 @@ export async function sendDueEngagementNotifications(): Promise<NotificationResu
   if (preferencesError) throw preferencesError;
 
   const result: NotificationResult = { considered: 0, sent: 0, failed: 0, expired: 0 };
+  // `preferences` is loaded once for this scheduler run. Keep the in-memory
+  // state in sync after a delivery so a batch of due announcements cannot send
+  // multiple content notifications to the same student before the next run.
+  const contentSentUserIds = new Set<string>();
   for (const item of content ?? []) {
     for (const preference of preferences ?? []) {
       const eligible =
@@ -235,6 +239,7 @@ export async function sendDueEngagementNotifications(): Promise<NotificationResu
         ((item.notification_type === "news" || item.notification_type === "announcement") &&
           preference.news_notifications_enabled);
       if (!eligible) continue;
+      if (contentSentUserIds.has(preference.user_id)) continue;
       if (
         preference.last_content_notification_sent_at &&
         now.getTime() - new Date(preference.last_content_notification_sent_at).getTime() < CONTENT_COOLDOWN_MS
@@ -264,6 +269,7 @@ export async function sendDueEngagementNotifications(): Promise<NotificationResu
       result.failed += delivery.failed;
       result.expired += delivery.expired;
       if (delivery.sent > 0) {
+        contentSentUserIds.add(preference.user_id);
         await admin
           .from("notification_preferences")
           .update({ last_content_notification_sent_at: now.toISOString() } as never)

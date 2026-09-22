@@ -44,6 +44,7 @@ type DashboardData = {
     topic: string;
     subject: string;
     accuracy: number;
+    answered: number;
   }[];
   hasSessions: boolean;
   totalPoints: number;
@@ -250,7 +251,7 @@ export function DashboardPage({
                       <p className="text-sm text-slate-500">{topic.topic}</p>
                     </div>
                     <Badge className="border-amber/20 bg-amber/10 text-amber">
-                      {topic.accuracy}% accuracy
+                      {topic.accuracy}% accuracy · {topic.answered} answered
                     </Badge>
                   </div>
                   <Progress value={topic.accuracy} className="mt-4" />
