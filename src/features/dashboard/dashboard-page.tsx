@@ -228,7 +228,7 @@ export function DashboardPage({
           </CardHeader>
           <CardContent className="space-y-4">
             {!activeData?.hasSessions || activeData.weakTopics.length === 0 ? (
-              <div className="rounded-2xl border border-border bg-[#F8FAFC] p-6 text-center">
+              <div className="rounded-2xl border border-border bg-[#F8FAFC] p-6 text-center dark:bg-slate-800/70">
                 <p className="text-sm text-slate-500">
                   {activeData?.hasSessions
                     ? "Great job — no weak topics detected yet!"
@@ -242,7 +242,7 @@ export function DashboardPage({
               activeData.weakTopics.map((topic) => (
                 <div
                   key={topic.topic}
-                  className="rounded-2xl border border-border bg-[#F8FAFC] p-4"
+                  className="rounded-2xl border border-border bg-[#F8FAFC] p-4 dark:bg-slate-800/70"
                 >
                   <div className="flex items-center justify-between gap-4">
                     <div>

@@ -139,12 +139,12 @@ export default function ProfilePage() {
       {/* Plan card */}
       {!planLoading &&
         (isPro ? (
-          <Card className="border-yellow-200 bg-gradient-to-br from-yellow-50 to-amber-50 shadow-sm">
+          <Card className="border-yellow-200 bg-gradient-to-br from-yellow-50 to-amber-50 shadow-sm dark:border-amber-400/40 dark:from-amber-500/15 dark:to-slate-900">
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100">
-                    <Crown className="h-5 w-5 text-yellow-600" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100 dark:bg-amber-400/20">
+                    <Crown className="h-5 w-5 text-yellow-600 dark:text-amber-300" />
                   </div>
                   <div>
                     <p className="font-semibold text-navy">Prepcore Pro</p>
@@ -155,7 +155,7 @@ export default function ProfilePage() {
                     </p>
                   </div>
                 </div>
-                <Badge className="border-yellow-300 bg-yellow-100 text-yellow-700">
+                <Badge className="border-yellow-300 bg-yellow-100 text-yellow-700 dark:border-amber-400/40 dark:bg-amber-400/15 dark:text-amber-200">
                   Active
                 </Badge>
               </div>
@@ -241,7 +241,7 @@ export default function ProfilePage() {
                   <span>Top rank reached</span>
                 )}
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+              <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
                 <div
                   className="h-full rounded-full bg-primary transition-all"
                   style={{ width: `${rankInfo.progress}%` }}
@@ -262,12 +262,12 @@ export default function ProfilePage() {
         </CardHeader>
         <CardContent className="space-y-4">
           {error && (
-            <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-600">
+            <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-600 dark:border-red-400/30 dark:bg-red-500/10 dark:text-red-300">
               {error}
             </div>
           )}
           {saved && (
-            <div className="rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-600 flex items-center gap-2">
+            <div className="rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-600 flex items-center gap-2 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-300">
               <Check className="h-4 w-4" />
               Changes saved successfully
             </div>
@@ -299,7 +299,7 @@ export default function ProfilePage() {
               id="email"
               value={editData?.email ?? ""}
               disabled
-              className="bg-slate-50 text-slate-500"
+              className="bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
             />
             <p className="text-xs text-slate-400">
               Email cannot be changed — linked to your Google account
@@ -388,7 +388,7 @@ export default function ProfilePage() {
             </div>
             <Button
               variant="outline"
-              className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 gap-2"
+              className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 gap-2 dark:border-red-400/30 dark:text-red-300 dark:hover:bg-red-500/10 dark:hover:border-red-400/50"
               onClick={() => void handleLogout()}
               disabled={isLoggingOut}
             >
