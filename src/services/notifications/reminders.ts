@@ -15,11 +15,24 @@ type NotificationResult = ReminderResult;
 const CONTENT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const WEEKLY_SUMMARY_COOLDOWN_MS = 6 * 24 * 60 * 60 * 1000;
 
+async function claimNotificationSlot(
+  admin: ReturnType<typeof createServiceRoleClient>,
+  userId: string,
+  deliveryKey: string,
+) {
+  const { data, error } = await admin.rpc("claim_notification_frequency_slot", {
+    p_user_id: userId,
+    p_delivery_key: deliveryKey,
+  });
+  if (error) throw error;
+  return data === true;
+}
+
 async function deliverToUser(
   admin: ReturnType<typeof createServiceRoleClient>,
   userId: string,
   payload: Parameters<typeof sendWebPush>[1],
-  options: { contentId?: string; source: string },
+  options: { contentId?: string; source: string; deliveryKey: string },
 ): Promise<Pick<ReminderResult, "sent" | "failed" | "expired">> {
   const { data: subscriptions, error } = await admin
     .from("push_subscriptions")
@@ -27,6 +40,9 @@ async function deliverToUser(
     .eq("user_id", userId)
     .eq("is_active", true);
   if (error) throw error;
+  if (!subscriptions?.length || !(await claimNotificationSlot(admin, userId, options.deliveryKey))) {
+    return { sent: 0, failed: 0, expired: 0 };
+  }
 
   let sent = 0;
   let failed = 0;
@@ -117,6 +133,7 @@ export async function sendDueStreakReminders(): Promise<ReminderResult> {
       .eq("is_active", true);
     if (subscriptionError) throw subscriptionError;
     if (!subscriptions?.length) continue;
+    if (!(await claimNotificationSlot(admin, preference.user_id, `streak:${streak.last_activity_at}`))) continue;
 
     const reminderType = preference.streak_reminders_enabled
       ? "streak_reminder"
@@ -241,7 +258,7 @@ export async function sendDueEngagementNotifications(): Promise<NotificationResu
           url: item.url === "/practice" ? "/practice" : "/dashboard",
           type: item.notification_type,
         },
-        { contentId: item.id, source: "admin_content" },
+        { contentId: item.id, source: "admin_content", deliveryKey: `content:${item.id}` },
       );
       result.sent += delivery.sent;
       result.failed += delivery.failed;
@@ -289,7 +306,7 @@ export async function sendDueWeeklySummaries(): Promise<NotificationResult> {
         url: "/dashboard",
         type: "weekly_summary",
       },
-      { source: "weekly_summary" },
+      { source: "weekly_summary", deliveryKey: `weekly:${now.toISOString().slice(0, 10)}` },
     );
     result.sent += delivery.sent;
     result.failed += delivery.failed;

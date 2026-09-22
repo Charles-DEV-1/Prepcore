@@ -22,11 +22,11 @@ export async function GET(request: Request) {
     .select("id")
     .single();
   try {
-    const results = await Promise.all([
-      sendDueStreakReminders(),
-      sendDueEngagementNotifications(),
-      sendDueWeeklySummaries(),
-    ]);
+    const results = [
+      await sendDueStreakReminders(),
+      await sendDueEngagementNotifications(),
+      await sendDueWeeklySummaries(),
+    ];
     const result = results.reduce(
       (total, current) => ({
         considered: total.considered + current.considered,

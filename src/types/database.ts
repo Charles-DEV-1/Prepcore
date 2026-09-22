@@ -814,6 +814,10 @@ export type Database = {
           question_count: number;
         }>;
       };
+      claim_notification_frequency_slot: {
+        Args: { p_user_id: string; p_delivery_key: string };
+        Returns: boolean;
+      };
     };
     Enums: {
       exam_type: "jamb" | "waec";
