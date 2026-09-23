@@ -1,5 +1,6 @@
 import { createClient } from "@/services/supabase/server";
 import { createServiceRoleClient } from "@/services/supabase/admin";
+import { refillQuestionCacheForSubject } from "@/services/questions/aloc-cache";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import {
   hasTrustedOrigin,
@@ -212,11 +213,28 @@ async function handlePost(request: Request) {
     });
   }
 
-  // Provider refreshes are deliberately not performed in an interactive
-  // practice/exam request. ALOC is intermittently unreachable from this
-  // runtime; waiting on it made learners wait 8–26 seconds. Existing cached
-  // ALOC rows remain available for Pro users, while cache refresh belongs in a
-  // scheduled admin job rather than the learner request path.
+  // Refill only an underfilled subject. This writes a validated WAEC/JAMB page
+  // to Supabase, then the query below serves the combined database bank.
+  const { count: cachedCount, error: cachedCountError } = await admin
+    .from("questions")
+    .select("id", { count: "exact", head: true })
+    .eq("subject_id", subjectId)
+    .eq("exam_type", examType);
+  if (cachedCountError) {
+    return noStoreJson({ error: "Could not load questions" }, { status: 500 });
+  }
+  if ((cachedCount ?? 0) < limit) {
+    try {
+      await refillQuestionCacheForSubject(examType, subjectId);
+    } catch (error) {
+      // Existing cached rows remain usable when the provider is unavailable.
+      console.warn("question_cache_refill_failed", {
+        subjectId,
+        examType,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
 
   const query = admin
     .from("questions")

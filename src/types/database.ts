@@ -680,6 +680,23 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["daily_usage"]["Row"]>;
         Relationships: [];
       };
+      question_cache_state: {
+        Row: {
+          subject_id: string;
+          exam_type: "jamb" | "waec";
+          next_cursor: string | null;
+          exhausted: boolean;
+          last_attempt_at: string | null;
+          last_success_at: string | null;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["question_cache_state"]["Row"]> & {
+          subject_id: string;
+          exam_type: "jamb" | "waec";
+        };
+        Update: Partial<Database["public"]["Tables"]["question_cache_state"]["Row"]>;
+        Relationships: [];
+      };
       question_reports: {
         Row: {
           id: string;

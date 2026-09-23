@@ -135,7 +135,7 @@ export function PracticePage() {
   }, [activeExamType, selectedSubject.id, supabase]);
 
   const loadQuestions = useCallback(async () => {
-    if (!canUseActiveExam || (activeExamType === "waec" && !selectedYear)) {
+    if (!canUseActiveExam) {
       setQuestions([]);
       setLoading(false);
       return;
@@ -162,6 +162,15 @@ export function PracticePage() {
             )
           : await getSessionQuestions(selectedSubject.id, 25, activeExamType);
       setQuestions(nextQuestions);
+      if (activeExamType === "waec") {
+        const years = await getAvailableYears(
+          supabase,
+          selectedSubject.id,
+          "waec",
+        );
+        setAvailableYears(years);
+        if (!selectedYear && years[0]) setSelectedYear(years[0]);
+      }
     } catch (error) {
       setQuestions([]);
       setLoadError(
@@ -177,6 +186,7 @@ export function PracticePage() {
     canUseActiveExam,
     selectedSubject.id,
     selectedYear,
+    supabase,
   ]);
 
   useEffect(() => {

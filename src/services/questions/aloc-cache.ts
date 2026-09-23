@@ -3,8 +3,7 @@ import type { ExamType } from "@/types/app";
 
 const ALOC_QUESTIONS_URL = "https://dev.aloc.com.ng/api/v1/questions";
 const PROVIDER_BATCH_SIZE = 10;
-const TARGET_QUESTIONS_PER_SUBJECT = 200;
-const MAX_FETCH_ATTEMPTS_PER_SUBJECT = 30;
+export const TARGET_QUESTIONS_PER_SUBJECT = 200;
 
 type AlocQuestion = {
   id?: string;
@@ -26,14 +25,18 @@ type AlocResponse = {
   pagination?: { nextCursor?: string | null; hasMore?: boolean };
 };
 
+type CacheState = { next_cursor: string | null; exhausted: boolean };
 type CacheSubject = { id: string; name: string };
 
 export type QuestionCacheResult = {
   examType: ExamType;
+  subjectId?: string;
   subjects: number;
   fetched: number;
   inserted: number;
   skipped: number;
+  totalCached: number;
+  complete: boolean;
 };
 
 function toAlocSubjectSlug(name: string) {
@@ -56,24 +59,14 @@ function isOptionMap(value: unknown): value is Record<string, string> {
   );
 }
 
-function normalizeQuestion(
-  question: AlocQuestion,
-  subjectId: string,
-  examType: ExamType,
-) {
+function normalizeQuestion(question: AlocQuestion, subjectId: string, examType: ExamType) {
   const prompt = question.text?.trim();
   const correctAnswer = question.correctAnswer?.trim();
   if (
-    !question.id ||
-    !prompt ||
-    !isOptionMap(question.options) ||
-    Object.keys(question.options).length < 2 ||
-    !correctAnswer ||
-    !question.options[correctAnswer] ||
-    question.examType?.toLowerCase() !== examType
-  ) {
-    return null;
-  }
+    !question.id || !prompt || !isOptionMap(question.options) ||
+    Object.keys(question.options).length < 2 || !correctAnswer ||
+    !question.options[correctAnswer] || question.examType?.toLowerCase() !== examType
+  ) return null;
 
   return {
     subject_id: subjectId,
@@ -86,20 +79,14 @@ function normalizeQuestion(
     explanation: question.explanation?.trim() || question.solution?.trim() || null,
     source: "aloc",
     source_question_id: question.id,
-    source_question_order:
-      typeof question.questionNumber === "number" ? question.questionNumber : null,
+    source_question_order: typeof question.questionNumber === "number" ? question.questionNumber : null,
     media_url: question.imageUrl?.trim() || null,
   };
 }
 
-async function fetchAlocQuestions(
-  examType: ExamType,
-  subjectSlug: string,
-  cursor?: string,
-) {
+async function fetchAlocPage(examType: ExamType, subjectSlug: string, cursor?: string) {
   const apiKey = process.env.ALOC_API_KEY || process.env.ALOC_ACCESS_TOKEN;
   if (!apiKey) throw new Error("ALOC_API_KEY is not configured.");
-
   const url = new URL(ALOC_QUESTIONS_URL);
   url.searchParams.set("subject", subjectSlug);
   url.searchParams.set("examType", examType);
@@ -108,114 +95,90 @@ async function fetchAlocQuestions(
   const response = await fetch(url, {
     headers: { "X-API-Key": apiKey, Accept: "application/json" },
     cache: "no-store",
-    signal: AbortSignal.timeout(12_000),
+    signal: AbortSignal.timeout(8_000),
   });
   if (response.status === 404) return { questions: [], nextCursor: null };
   if (!response.ok) throw new Error(`ALOC request failed with HTTP ${response.status}.`);
-
   const payload = (await response.json()) as AlocResponse;
   return {
     questions: Array.isArray(payload.data) ? payload.data : [],
-    nextCursor: payload.pagination?.hasMore
-      ? payload.pagination.nextCursor ?? null
-      : null,
+    nextCursor: payload.pagination?.hasMore ? payload.pagination.nextCursor ?? null : null,
   };
 }
 
-/**
- * Refill the server-side ALOC cache. Learner question requests never call the
- * provider directly, keeping provider latency and the API key out of the UI.
- */
-export async function refreshQuestionCache(
-  examType: ExamType,
-): Promise<QuestionCacheResult> {
+async function getQuestionCount(subjectId: string, examType: ExamType) {
   const admin = createServiceRoleClient();
-  const { data: subjects, error: subjectsError } = await admin
-    .from("subjects")
-    .select("id, name")
-    .eq("exam_type", examType)
-    .order("name", { ascending: true });
-  if (subjectsError) throw subjectsError;
+  const { count, error } = await admin
+    .from("questions").select("id", { count: "exact", head: true })
+    .eq("subject_id", subjectId).eq("exam_type", examType);
+  if (error) throw error;
+  return count ?? 0;
+}
 
-  const result: QuestionCacheResult = {
-    examType,
-    subjects: subjects?.length ?? 0,
-    fetched: 0,
-    inserted: 0,
-    skipped: 0,
-  };
+/** Stores one provider page, then advances its cursor. It stops at 200 combined rows. */
+export async function refillQuestionCacheForSubject(examType: ExamType, subjectId: string): Promise<QuestionCacheResult> {
+  const admin = createServiceRoleClient();
+  const { data: subject, error: subjectError } = await admin
+    .from("subjects").select("id, name").eq("id", subjectId).eq("exam_type", examType).maybeSingle();
+  if (subjectError) throw subjectError;
+  if (!subject) throw new Error("Unknown exam subject.");
 
-  for (const subject of (subjects ?? []) as CacheSubject[]) {
-    const { count, error: countError } = await admin
-      .from("questions")
-      .select("id", { count: "exact", head: true })
-      .eq("subject_id", subject.id)
-      .eq("exam_type", examType)
-      .eq("source", "aloc");
-    if (countError) throw countError;
+  const totalBefore = await getQuestionCount(subjectId, examType);
+  const result: QuestionCacheResult = { examType, subjectId, subjects: 1, fetched: 0, inserted: 0, skipped: 0, totalCached: totalBefore, complete: totalBefore >= TARGET_QUESTIONS_PER_SUBJECT };
+  if (result.complete) return result;
 
-    let cachedCount = count ?? 0;
-    let attempts = 0;
-    let cursor: string | undefined;
-    while (
-      cachedCount < TARGET_QUESTIONS_PER_SUBJECT &&
-      attempts < MAX_FETCH_ATTEMPTS_PER_SUBJECT
-    ) {
-      attempts += 1;
-      const { questions: providerQuestions, nextCursor } = await fetchAlocQuestions(
-        examType,
-        toAlocSubjectSlug(subject.name),
-        cursor,
-      );
-      result.fetched += providerQuestions.length;
-      if (providerQuestions.length === 0) break;
+  const { data: state, error: stateError } = await admin
+    .from("question_cache_state").select("next_cursor, exhausted").eq("subject_id", subjectId).maybeSingle();
+  if (stateError) throw stateError;
+  const cacheState = state as CacheState | null;
+  if (cacheState?.exhausted) return { ...result, complete: true };
 
-      const rows = providerQuestions
-        .map((question) => normalizeQuestion(question, subject.id, examType))
-        .filter((question): question is NonNullable<typeof question> => question !== null);
-      if (!rows.length) {
-        result.skipped += providerQuestions.length;
-        if (!nextCursor) break;
-        cursor = nextCursor;
-        continue;
-      }
-
-      const providerIds = rows.map((row) => row.source_question_id);
-      const { data: existing, error: existingError } = await admin
-        .from("questions")
-        .select("source_question_id")
-        .eq("source", "aloc")
-        .in("source_question_id", providerIds);
-      if (existingError) throw existingError;
-      const existingIds = new Set(
-        (existing ?? []).map((row) => row.source_question_id).filter(Boolean),
-      );
-      const newRows = rows.filter((row) => !existingIds.has(row.source_question_id));
-      result.skipped += rows.length - newRows.length;
-      if (!newRows.length) {
-        if (!nextCursor) break;
-        cursor = nextCursor;
-        continue;
-      }
-
-      const { error: insertError } = await admin.from("questions").insert(newRows as never);
-      if (insertError) {
-        // A concurrent refresh may win the unique provider-ID race. Do not
-        // hide other database errors, which require operator attention.
-        if (insertError.code === "23505") {
-          result.skipped += newRows.length;
-          if (!nextCursor) break;
-          cursor = nextCursor;
-          continue;
-        }
-        throw insertError;
-      }
-      result.inserted += newRows.length;
-      cachedCount += newRows.length;
-      if (!nextCursor) break;
-      cursor = nextCursor;
-    }
+  const { questions, nextCursor } = await fetchAlocPage(
+    examType, toAlocSubjectSlug((subject as CacheSubject).name), cacheState?.next_cursor ?? undefined,
+  );
+  result.fetched = questions.length;
+  const now = new Date().toISOString();
+  if (!questions.length) {
+    await admin.from("question_cache_state").upsert({ subject_id: subjectId, exam_type: examType, next_cursor: null, exhausted: true, last_attempt_at: now, updated_at: now } as never);
+    return { ...result, complete: true };
   }
 
+  const rows = questions.map((question) => normalizeQuestion(question, subjectId, examType)).filter((question): question is NonNullable<typeof question> => question !== null);
+  result.skipped = questions.length - rows.length;
+  const providerIds = rows.map((row) => row.source_question_id);
+  const { data: existing, error: existingError } = await admin
+    .from("questions").select("source_question_id").eq("source", "aloc").in("source_question_id", providerIds);
+  if (existingError) throw existingError;
+  const existingIds = new Set((existing ?? []).map((row) => row.source_question_id).filter(Boolean));
+  const newRows = rows.filter((row) => !existingIds.has(row.source_question_id));
+  result.skipped += rows.length - newRows.length;
+  if (newRows.length) {
+    const { error: insertError } = await admin.from("questions").insert(newRows as never);
+    if (insertError && insertError.code !== "23505") throw insertError;
+    if (insertError?.code === "23505") result.skipped += newRows.length;
+    else result.inserted = newRows.length;
+  }
+
+  result.totalCached = await getQuestionCount(subjectId, examType);
+  result.complete = result.totalCached >= TARGET_QUESTIONS_PER_SUBJECT || !nextCursor;
+  await admin.from("question_cache_state").upsert({
+    subject_id: subjectId, exam_type: examType, next_cursor: result.complete ? null : nextCursor,
+    exhausted: !nextCursor, last_attempt_at: now, last_success_at: now, updated_at: now,
+  } as never);
   return result;
+}
+
+/** Scheduled work is one page only; practice refills its own underfilled subject. */
+export async function refreshQuestionCache(examType: ExamType) {
+  const admin = createServiceRoleClient();
+  const { data: subjects, error } = await admin
+    .from("subjects").select("id").eq("exam_type", examType).order("name", { ascending: true });
+  if (error) throw error;
+  for (const subject of subjects ?? []) {
+    const total = await getQuestionCount(subject.id, examType);
+    if (total >= TARGET_QUESTIONS_PER_SUBJECT) continue;
+    const result = await refillQuestionCacheForSubject(examType, subject.id);
+    if (!result.complete || result.inserted > 0 || result.fetched > 0) return result;
+  }
+  return { examType, subjects: 0, fetched: 0, inserted: 0, skipped: 0, totalCached: 0, complete: true } satisfies QuestionCacheResult;
 }
