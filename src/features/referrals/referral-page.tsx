@@ -44,6 +44,7 @@ import {
 import { createClient } from "@/services/supabase/client";
 import type { UserReferralReward } from "@/types/app";
 import { siteConfig } from "@/config/site";
+import { PageSkeleton } from "@/components/layout/page-skeleton";
 
 const APP_ORIGIN = siteConfig.url;
 
@@ -140,7 +141,9 @@ export function ReferralPage() {
         if (!user) throw new Error("Please sign in to view referrals.");
         setStats(await getReferralStats(user.id));
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load referrals.");
+        setError(
+          err instanceof Error ? err.message : "Failed to load referrals.",
+        );
       } finally {
         setLoading(false);
       }
@@ -173,11 +176,7 @@ export function ReferralPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="h-5 w-5 animate-spin text-primary" />
-      </div>
-    );
+    return <PageSkeleton />;
   }
 
   if (error || !stats) {
@@ -201,7 +200,9 @@ export function ReferralPage() {
           <Gift className="mr-1 h-3 w-3" />
           Refer & earn
         </Badge>
-        <h1 className="text-3xl font-bold text-navy">Invite friends, earn rewards</h1>
+        <h1 className="text-3xl font-bold text-navy">
+          Invite friends, earn rewards
+        </h1>
         <p className="max-w-2xl text-sm leading-6 text-slate-600">
           Share your link. For every 5 friends who upgrade to Pro, you get one
           free Pro month and ₦5,000 cash.
@@ -223,18 +224,30 @@ export function ReferralPage() {
             {referralLink}
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button type="button" variant="outline" onClick={() => copyLink(referralLink)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => copyLink(referralLink)}
+            >
               <Copy className="h-4 w-4" />
               {copied ? "Copied!" : "Copy link"}
             </Button>
             <Button asChild variant="outline">
-              <a href={buildWhatsAppUrl(referralLink)} target="_blank" rel="noreferrer">
+              <a
+                href={buildWhatsAppUrl(referralLink)}
+                target="_blank"
+                rel="noreferrer"
+              >
                 <MessageCircle className="h-4 w-4" />
                 Share on WhatsApp
               </a>
             </Button>
             <Button asChild variant="outline">
-              <a href={buildTwitterUrl(referralLink)} target="_blank" rel="noreferrer">
+              <a
+                href={buildTwitterUrl(referralLink)}
+                target="_blank"
+                rel="noreferrer"
+              >
                 <Share2 className="h-4 w-4" />
                 Share on X
               </a>
@@ -274,14 +287,16 @@ export function ReferralPage() {
         <CardHeader>
           <CardTitle>Progress to next reward</CardTitle>
           <CardDescription>
-            {progressCount}/5 paid referrals toward your next free Pro month + ₦5,000
+            {progressCount}/5 paid referrals toward your next free Pro month +
+            ₦5,000
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <Progress value={progressValue} />
           <p className="text-sm text-slate-600">
             You need {stats.nextRewardAt} more paid referral
-            {stats.nextRewardAt === 1 ? "" : "s"} to earn your next free Pro month + ₦5,000.
+            {stats.nextRewardAt === 1 ? "" : "s"} to earn your next free Pro
+            month + ₦5,000.
           </p>
         </CardContent>
       </Card>
@@ -302,19 +317,21 @@ export function ReferralPage() {
             stats.rewards.map((reward) => (
               <div key={reward.id} className="space-y-3">
                 <RewardStatus reward={reward} />
-                {!reward.cash_claimed && !reward.admin_paid && reward.pro_granted && (
-                  <Button
-                    type="button"
-                    className="w-full sm:w-auto"
-                    onClick={() => {
-                      setClaimSuccess(false);
-                      setClaimError(null);
-                      setClaimReward(reward);
-                    }}
-                  >
-                    Claim ₦5,000
-                  </Button>
-                )}
+                {!reward.cash_claimed &&
+                  !reward.admin_paid &&
+                  reward.pro_granted && (
+                    <Button
+                      type="button"
+                      className="w-full sm:w-auto"
+                      onClick={() => {
+                        setClaimSuccess(false);
+                        setClaimError(null);
+                        setClaimReward(reward);
+                      }}
+                    >
+                      Claim ₦5,000
+                    </Button>
+                  )}
               </div>
             ))
           )}
@@ -331,7 +348,8 @@ export function ReferralPage() {
           <DialogHeader>
             <DialogTitle>Claim ₦5,000</DialogTitle>
             <DialogDescription>
-              Enter your bank details. We will review and send payment within 24–48 hours.
+              Enter your bank details. We will review and send payment within
+              24–48 hours.
             </DialogDescription>
           </DialogHeader>
           <form

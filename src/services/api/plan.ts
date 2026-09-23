@@ -35,28 +35,30 @@ function isPartnerBulkProActive(partner: {
 export async function getEffectivePlan(): Promise<EffectivePlan> {
   const supabase = createClient();
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user;
 
   if (!user) {
     return { plan: "free", source: "free" };
   }
 
-  const { data: sub } = await supabase
-    .from("subscriptions")
-    .select("plan, status, current_period_end")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const [{ data: sub }, { data: referralRow }] = await Promise.all([
+    supabase
+      .from("subscriptions")
+      .select("plan, status, current_period_end")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("user_referrals")
+      .select("partner_id")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+  ]);
 
   if (sub && isIndividualPro(sub)) {
     return { plan: "pro", source: "individual" };
   }
-
-  const { data: referralRow } = await supabase
-    .from("user_referrals")
-    .select("partner_id")
-    .eq("user_id", user.id)
-    .maybeSingle();
 
   const referral = referralRow as { partner_id: string } | null;
   if (!referral) {

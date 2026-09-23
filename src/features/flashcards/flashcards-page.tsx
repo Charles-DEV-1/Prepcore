@@ -9,6 +9,7 @@ import { useUserPlan } from "@/hooks/use-user-plan";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PageSkeleton } from "@/components/layout/page-skeleton";
 
 type Flashcard = {
   id: string;
@@ -64,11 +65,7 @@ export function FlashcardsPage() {
 
   // Plan still loading
   if (isLoading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <p className="text-slate-500">Loading...</p>
-      </div>
-    );
+    return <PageSkeleton variant="practice" />;
   }
 
   // Not pro — show full gate
@@ -146,11 +143,7 @@ export function FlashcardsPage() {
 
   // Pro user — loading cards
   if (loading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <p className="text-slate-500">Loading flashcards...</p>
-      </div>
-    );
+    return <PageSkeleton variant="practice" />;
   }
 
   if (!card) {

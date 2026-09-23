@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUserPlan } from "@/hooks/use-user-plan";
 import { getMyReferral, type UserReferral } from "@/services/api/referral";
+import { PageSkeleton } from "@/components/layout/page-skeleton";
 
 const FREE_FEATURES = [
   { text: "Unlimited practice mode", included: true },
@@ -76,11 +77,7 @@ export default function UpgradePage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-5 w-5 animate-spin text-primary" />
-      </div>
-    );
+    return <PageSkeleton variant="form" />;
   }
 
   if (isPro) {
@@ -193,60 +190,83 @@ export default function UpgradePage() {
           </CardContent>
         </Card>
 
-        <motion.div initial={{ opacity: 0, y: reducedMotion ? 0 : 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reducedMotion ? 0.12 : 0.38, delay: 0.08 }}><Card className="relative overflow-hidden border-primary bg-softblue shadow-soft">
-          {!reducedMotion && <motion.div aria-hidden className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent_30%,rgba(96,165,250,.16)_48%,transparent_66%)]" animate={{ x: ["-100%", "100%"] }} transition={{ duration: 3.8, repeat: Infinity, repeatDelay: 2, ease: "easeInOut" }} />}
-          <div className="absolute right-4 top-4">
-            <Badge className="bg-primary text-white">Most popular</Badge>
-          </div>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Sparkles className="h-5 w-5 text-primary" />
-              Pro
-            </CardTitle>
-            <p className="text-4xl font-bold text-navy">NGN 3,000</p>
-            <p className="text-sm text-slate-500">One-time yearly access</p>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {PRO_FEATURES.map((feature) => (
-                <div key={feature} className="flex items-center gap-3 text-sm">
-                  <Check className="h-4 w-4 text-green-500" />
-                  <span className="text-slate-700">{feature}</span>
-                </div>
-              ))}
+        <motion.div
+          initial={{ opacity: 0, y: reducedMotion ? 0 : 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: reducedMotion ? 0.12 : 0.38, delay: 0.08 }}
+        >
+          <Card className="relative overflow-hidden border-primary bg-softblue shadow-soft">
+            {!reducedMotion && (
+              <motion.div
+                aria-hidden
+                className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent_30%,rgba(96,165,250,.16)_48%,transparent_66%)]"
+                animate={{ x: ["-100%", "100%"] }}
+                transition={{
+                  duration: 3.8,
+                  repeat: Infinity,
+                  repeatDelay: 2,
+                  ease: "easeInOut",
+                }}
+              />
+            )}
+            <div className="absolute right-4 top-4">
+              <Badge className="bg-primary text-white">Most popular</Badge>
             </div>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Sparkles className="h-5 w-5 text-primary" />
+                Pro
+              </CardTitle>
+              <p className="text-4xl font-bold text-navy">NGN 3,000</p>
+              <p className="text-sm text-slate-500">One-time yearly access</p>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {PRO_FEATURES.map((feature) => (
+                  <div
+                    key={feature}
+                    className="flex items-center gap-3 text-sm"
+                  >
+                    <Check className="h-4 w-4 text-green-500" />
+                    <span className="text-slate-700">{feature}</span>
+                  </div>
+                ))}
+              </div>
 
-            <div className="mt-6 rounded-xl border border-blue-100 bg-white p-4">
-              <div className="flex items-start gap-3">
-                <ShieldCheck className="mt-0.5 h-5 w-5 text-primary" />
-                <div>
-                  <p className="text-sm font-semibold text-navy">
-                    Verified before activation
-                  </p>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Prepcore verifies the transaction with Flutterwave before
-                    upgrading your account.
-                  </p>
+              <div className="mt-6 rounded-xl border border-blue-100 bg-white p-4">
+                <div className="flex items-start gap-3">
+                  <ShieldCheck className="mt-0.5 h-5 w-5 text-primary" />
+                  <div>
+                    <p className="text-sm font-semibold text-navy">
+                      Verified before activation
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      Prepcore verifies the transaction with Flutterwave before
+                      upgrading your account.
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {error && (
-              <p className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
-                {error}
-              </p>
-            )}
+              {error && (
+                <p className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+                  {error}
+                </p>
+              )}
 
-            <Button
-              className="mt-6 w-full"
-              onClick={startCheckout}
-              disabled={checkoutLoading}
-            >
-              {checkoutLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-              Pay with Flutterwave
-            </Button>
-          </CardContent>
-        </Card></motion.div>
+              <Button
+                className="mt-6 w-full"
+                onClick={startCheckout}
+                disabled={checkoutLoading}
+              >
+                {checkoutLoading && (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                )}
+                Pay with Flutterwave
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
     </div>
   );

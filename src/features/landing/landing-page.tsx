@@ -112,6 +112,7 @@ export function LandingPage() {
                 alt="Prepcore app branding showcase"
                 width={1376}
                 height={768}
+                sizes="(max-width: 767px) 100vw, (max-width: 1280px) 58vw, 680px"
                 className="aspect-[16/7] w-full object-cover"
                 priority
               />
@@ -126,6 +127,7 @@ export function LandingPage() {
                       alt="Prepcore logo"
                       width={52}
                       height={52}
+                      sizes="52px"
                       className="rounded-full"
                     />
                     <div>
@@ -169,7 +171,9 @@ export function LandingPage() {
                       <p className="font-semibold text-navy dark:text-white">
                         Subject performance
                       </p>
-                      <span className="text-xs text-slate-500 dark:text-slate-400">This week</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                        This week
+                      </span>
                     </div>
                     <div className="mt-5 flex h-40 items-end gap-3">
                       {[68, 72, 52, 65, 80].map((value, index) => (
@@ -190,7 +194,9 @@ export function LandingPage() {
                   </div>
 
                   <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm dark:border-blue-500/20 dark:bg-blue-500/10 dark:shadow-none dark:ring-1 dark:ring-white/5">
-                    <p className="font-semibold text-navy dark:text-white">AI recommendation</p>
+                    <p className="font-semibold text-navy dark:text-white">
+                      AI recommendation
+                    </p>
                     <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
                       Focus on Physics waves for 18 minutes, then answer 20
                       English questions.
@@ -213,11 +219,24 @@ export function LandingPage() {
       <section className="bg-white px-4 py-10 dark:bg-[#0F172A] sm:py-14">
         <div className="container">
           <div className="overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] p-7 text-white shadow-[0_20px_50px_rgba(37,99,235,0.2)] dark:bg-[#111C31] dark:ring-1 dark:ring-blue-500/20 sm:p-10">
-            <p className="text-sm font-bold uppercase tracking-[0.12em] text-blue-100">Free JAMB diagnostic</p>
-            <h2 className="mt-3 max-w-2xl text-3xl font-bold tracking-normal sm:text-4xl">Only 24% of JAMB candidates scored above 200 in 2026</h2>
-            <p className="mt-3 max-w-xl text-blue-100">Find out where you stand in 5 minutes - completely free.</p>
-            <Button asChild size="lg" variant="outline" className="mt-6 border-white bg-white text-primary hover:bg-blue-50">
-              <Link href="/diagnostic">Take the free diagnostic test <ArrowRight className="h-4 w-4" /></Link>
+            <p className="text-sm font-bold uppercase tracking-[0.12em] text-blue-100">
+              Free JAMB diagnostic
+            </p>
+            <h2 className="mt-3 max-w-2xl text-3xl font-bold tracking-normal sm:text-4xl">
+              Only 24% of JAMB candidates scored above 200 in 2026
+            </h2>
+            <p className="mt-3 max-w-xl text-blue-100">
+              Find out where you stand in 5 minutes - completely free.
+            </p>
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="mt-6 border-white bg-white text-primary hover:bg-blue-50"
+            >
+              <Link href="/diagnostic">
+                Take the free diagnostic test <ArrowRight className="h-4 w-4" />
+              </Link>
             </Button>
           </div>
         </div>
@@ -231,7 +250,9 @@ export function LandingPage() {
               className="rounded-2xl border border-border bg-white p-5 text-center shadow-sm dark:bg-[#151E2E] dark:shadow-none dark:ring-1 dark:ring-white/5"
             >
               <p className="text-3xl font-bold text-primary">{value}</p>
-              <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">{label}</p>
+              <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
+                {label}
+              </p>
             </div>
           ))}
         </div>
@@ -276,43 +297,89 @@ export function LandingPage() {
       <section id="pricing" className="bg-white py-16 dark:bg-[#0B1220]">
         <div className="container">
           <div className="mx-auto max-w-2xl text-center">
-            <Badge className="border-blue-200 bg-softblue text-primary dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-400">Simple pricing</Badge>
+            <Badge className="border-blue-200 bg-softblue text-primary dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-400">
+              Simple pricing
+            </Badge>
             <h2 className="mt-4 text-4xl font-bold tracking-normal text-navy dark:text-white">
               Start free. Upgrade when you&apos;re ready for exam mode.
             </h2>
             <p className="mt-3 text-base leading-7 text-slate-600 dark:text-slate-400">
-              Build a daily practice habit for free, then unlock full mock exams and deeper study tools with one straightforward annual payment.
+              Build a daily practice habit for free, then unlock full mock exams
+              and deeper study tools with one straightforward annual payment.
             </p>
           </div>
 
           <div className="mx-auto mt-10 grid max-w-4xl gap-5 md:grid-cols-2">
             <Card className="border-border bg-white shadow-sm dark:border-slate-800 dark:bg-[#151E2E] dark:shadow-none dark:ring-1 dark:ring-white/5">
               <CardContent className="p-7">
-                <p className="text-lg font-bold text-navy dark:text-white">Free</p>
-                <p className="mt-4 text-4xl font-bold text-navy dark:text-white">₦0</p>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">A solid place to begin.</p>
+                <p className="text-lg font-bold text-navy dark:text-white">
+                  Free
+                </p>
+                <p className="mt-4 text-4xl font-bold text-navy dark:text-white">
+                  ₦0
+                </p>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  A solid place to begin.
+                </p>
                 <ul className="mt-6 space-y-3 text-sm text-slate-600 dark:text-slate-300">
-                  {["Unlimited subject practice", "Instant answer feedback", "Score tracking and weekly quiz", "Study streaks and progress basics"].map((item) => (
-                    <li key={item} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />{item}</li>
+                  {[
+                    "Unlimited subject practice",
+                    "Instant answer feedback",
+                    "Score tracking and weekly quiz",
+                    "Study streaks and progress basics",
+                  ].map((item) => (
+                    <li key={item} className="flex gap-2">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+                      {item}
+                    </li>
                   ))}
                 </ul>
-                <Button asChild variant="outline" className="mt-7 w-full"><Link href="/signup">Start practising free</Link></Button>
+                <Button asChild variant="outline" className="mt-7 w-full">
+                  <Link href="/signup">Start practising free</Link>
+                </Button>
               </CardContent>
             </Card>
 
             <Card className="relative overflow-hidden border-primary bg-gradient-to-br from-[#EFF6FF] via-white to-blue-50 shadow-[0_22px_56px_rgba(37,99,235,0.16)] dark:border-blue-500 dark:bg-[#151E2E] dark:from-[#151E2E] dark:via-[#151E2E] dark:to-[#151E2E] dark:shadow-none dark:ring-2 dark:ring-blue-500/30">
-              <div className="absolute right-5 top-5"><Badge className="bg-primary text-white">Best for exam prep</Badge></div>
+              <div className="absolute right-5 top-5">
+                <Badge className="bg-primary text-white">
+                  Best for exam prep
+                </Badge>
+              </div>
               <CardContent className="p-7">
-                <div className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" /><p className="text-lg font-bold text-navy dark:text-white">Prepcore Pro</p></div>
-                <p className="mt-4 text-4xl font-bold text-navy dark:text-white">₦3,000</p>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">One payment for one year of access.</p>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  <p className="text-lg font-bold text-navy dark:text-white">
+                    Prepcore Pro
+                  </p>
+                </div>
+                <p className="mt-4 text-4xl font-bold text-navy dark:text-white">
+                  ₦3,000
+                </p>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  One payment for one year of access.
+                </p>
                 <ul className="mt-6 space-y-3 text-sm text-slate-700 dark:text-slate-300">
-                  {["Everything in Free", "Full JAMB and WAEC mock exams", "60 English + 40 questions per selected subject", "Subject switching, timers, question maps and results", "AI explanations and all flashcards"].map((item) => (
-                    <li key={item} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />{item}</li>
+                  {[
+                    "Everything in Free",
+                    "Full JAMB and WAEC mock exams",
+                    "60 English + 40 questions per selected subject",
+                    "Subject switching, timers, question maps and results",
+                    "AI explanations and all flashcards",
+                  ].map((item) => (
+                    <li key={item} className="flex gap-2">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+                      {item}
+                    </li>
                   ))}
                 </ul>
-                <Button asChild className="mt-7 w-full"><Link href="/upgrade">Unlock Pro exam mode</Link></Button>
-                <p className="mt-3 text-center text-xs text-slate-500 dark:text-slate-400">Secure Flutterwave payment · Access activates after verification</p>
+                <Button asChild className="mt-7 w-full">
+                  <Link href="/upgrade">Unlock Pro exam mode</Link>
+                </Button>
+                <p className="mt-3 text-center text-xs text-slate-500 dark:text-slate-400">
+                  Secure Flutterwave payment · Access activates after
+                  verification
+                </p>
               </CardContent>
             </Card>
           </div>
@@ -348,7 +415,10 @@ export function LandingPage() {
                 quote: "The explanations are short and actually make sense.",
               },
             ].map(({ name, quote }) => (
-              <Card key={name} className="border-border bg-white shadow-sm dark:border-slate-800 dark:bg-[#151E2E] dark:shadow-none dark:ring-1 dark:ring-white/5">
+              <Card
+                key={name}
+                className="border-border bg-white shadow-sm dark:border-slate-800 dark:bg-[#151E2E] dark:shadow-none dark:ring-1 dark:ring-white/5"
+              >
                 <CardContent className="p-5">
                   <div className="flex gap-1 text-[#D97706]">
                     {Array.from({ length: 5 }).map((_, starIndex) => (
@@ -437,6 +507,7 @@ export function LandingPage() {
                 alt="Prepcore alternate brand design"
                 width={1376}
                 height={768}
+                sizes="288px"
                 className="aspect-[16/9] w-full object-cover"
               />
             </div>

@@ -29,6 +29,7 @@ import {
   updateProfileData,
   type ProfileData,
 } from "@/services/api/profile";
+import { PageSkeleton } from "@/components/layout/page-skeleton";
 
 type RankInfo = {
   name: string;
@@ -119,11 +120,7 @@ export default function ProfilePage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
+    return <PageSkeleton variant="form" />;
   }
 
   return (

@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { createClient } from "@/services/supabase/client";
 import { cn } from "@/lib/utils";
+import { PageSkeleton } from "@/components/layout/page-skeleton";
 
 type Question = {
   id: string;
@@ -342,11 +343,7 @@ export function WeeklyQuizPage() {
 
   // ── LOADING ───────────────────────────────────────────────
   if (phase === "loading") {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <p className="text-slate-500">Loading this week&apos;s quiz...</p>
-      </div>
-    );
+    return <PageSkeleton variant="practice" />;
   }
 
   // ── NO QUIZ ───────────────────────────────────────────────

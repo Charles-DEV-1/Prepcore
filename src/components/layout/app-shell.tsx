@@ -56,8 +56,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     async function loadUserData() {
       const supabase = createClient();
       const {
-        data: { user },
-      } = await supabase.auth.getUser();
+        data: { session },
+      } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user) return;
 
       // Initials from name or email
@@ -77,9 +78,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       setStreak(await getCurrentStreak(supabase, user.id));
     }
     void loadUserData();
-    // A tab can stay open past the 24-hour expiry boundary. Refresh the
-    // server-backed value so an expired streak visibly becomes 0 without a reload.
-    const intervalId = window.setInterval(() => void loadUserData(), 60_000);
+    // Refresh occasionally for tabs left open overnight. Practice completion
+    // updates the value immediately through the custom event below.
+    const intervalId = window.setInterval(
+      () => void loadUserData(),
+      60 * 60 * 1000,
+    );
     return () => window.clearInterval(intervalId);
   }, []);
 
@@ -89,7 +93,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
     window.addEventListener("prepcore:streak-increased", updateVisibleStreak);
     return () =>
-      window.removeEventListener("prepcore:streak-increased", updateVisibleStreak);
+      window.removeEventListener(
+        "prepcore:streak-increased",
+        updateVisibleStreak,
+      );
   }, []);
 
   return (
@@ -121,10 +128,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   alt="Prepcore logo"
                   width={60}
                   height={60}
+                  sizes="60px"
                   className="rounded-full"
                 />
                 <div>
-                  <p className="text-lg font-extrabold text-navy dark:text-main">prepcore</p>
+                  <p className="text-lg font-extrabold text-navy dark:text-main">
+                    prepcore
+                  </p>
                   <p className="text-xs font-medium text-slate-500 dark:text-sub">
                     Smart prep. Higher scores.
                   </p>
@@ -163,10 +173,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   alt="Prepcore logo"
                   width={48}
                   height={48}
+                  sizes="48px"
                   className="rounded-full"
                   priority
                 />
-                <span className="font-semibold text-navy dark:text-main">prepcore</span>
+                <span className="font-semibold text-navy dark:text-main">
+                  prepcore
+                </span>
               </Link>
             </div>
 
@@ -195,7 +208,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {/* Real streak */}
               {streak !== null && streak > 0 && (
                 <Badge className="hidden shrink-0 gap-1 border-red-200 bg-red-50 px-2 text-red-600 min-[390px]:inline-flex sm:px-2.5">
-                  <Flame className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+                  <Flame
+                    className="h-3.5 w-3.5 fill-current"
+                    aria-hidden="true"
+                  />
                   <span>{streak}</span>
                   <span className="hidden sm:inline">day streak</span>
                 </Badge>
@@ -249,10 +265,13 @@ function SidebarContent({
             alt="Prepcore logo"
             width={60}
             height={60}
+            sizes="60px"
             className="rounded-full"
           />
           <div>
-            <p className="text-lg font-extrabold text-navy dark:text-main">prepcore</p>
+            <p className="text-lg font-extrabold text-navy dark:text-main">
+              prepcore
+            </p>
             <p className="text-xs font-medium text-slate-500 dark:text-sub">
               Smart prep. Higher scores.
             </p>
@@ -269,7 +288,8 @@ function SidebarContent({
               href={item.href}
               className={cn(
                 "flex items-center gap-3 rounded-xl border-l-4 border-transparent px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-softblue hover:text-primary dark:text-sub dark:hover:bg-slate-800/50 dark:hover:text-slate-200",
-                active && "bg-softblue text-primary shadow-sm dark:border-blue-500 dark:bg-blue-600/10 dark:text-blue-400",
+                active &&
+                  "bg-softblue text-primary shadow-sm dark:border-blue-500 dark:bg-blue-600/10 dark:text-blue-400",
               )}
             >
               <item.icon className="h-4 w-4" />

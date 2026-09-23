@@ -1,6 +1,7 @@
-const VERSION = "prepcore-static-v2";
+const VERSION = "prepcore-static-v3";
 const STATIC_CACHE = `${VERSION}-assets`;
 const OFFLINE_URL = "/offline";
+const PUBLIC_PAGES = ["/", "/login", "/signup", "/privacy-policy"];
 const PERSONALIZED_PATHS = [
   "/admin",
   "/dashboard",
@@ -26,6 +27,7 @@ self.addEventListener("install", (event) => {
       .then((cache) =>
         cache.addAll([
           OFFLINE_URL,
+          "/",
           "/manifest.json",
           "/favicons/android-chrome-192x192.png",
           "/favicons/android-chrome-512x512.png",
@@ -38,15 +40,18 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) =>
-        Promise.all(
-          keys
-            .filter((key) => key !== STATIC_CACHE)
-            .map((key) => caches.delete(key)),
+    Promise.all([
+      caches
+        .keys()
+        .then((keys) =>
+          Promise.all(
+            keys
+              .filter((key) => key !== STATIC_CACHE)
+              .map((key) => caches.delete(key)),
+          ),
         ),
-      ),
+      self.registration.navigationPreload?.enable(),
+    ]),
   );
   self.clients.claim();
 });
@@ -56,13 +61,11 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
 
   if (request.method !== "GET" || url.origin !== self.location.origin) return;
-  if (
-    url.pathname.startsWith("/api/") ||
-    PERSONALIZED_PATHS.some(
-      (path) => url.pathname === path || url.pathname.startsWith(`${path}/`),
-    )
-  )
-    return;
+  const isPersonalized = PERSONALIZED_PATHS.some(
+    (path) => url.pathname === path || url.pathname.startsWith(`${path}/`),
+  );
+
+  if (url.pathname.startsWith("/api/")) return;
 
   if (
     request.destination === "script" ||
@@ -75,6 +78,7 @@ self.addEventListener("fetch", (event) => {
         (cached) =>
           cached ||
           fetch(request).then((response) => {
+            if (!response.ok) return response;
             const copy = response.clone();
             void caches
               .open(STATIC_CACHE)
@@ -87,7 +91,44 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (request.mode === "navigate") {
-    event.respondWith(fetch(request).catch(() => caches.match(OFFLINE_URL)));
+    // Never cache authenticated HTML: a shared device must not be able to see
+    // another learner's dashboard from the service-worker cache.
+    if (isPersonalized) {
+      event.respondWith(
+        Promise.resolve(event.preloadResponse)
+          .then((response) => response || fetch(request))
+          .catch(() => caches.match(OFFLINE_URL)),
+      );
+      return;
+    }
+
+    if (PUBLIC_PAGES.includes(url.pathname) && !url.search) {
+      event.respondWith(
+        caches.match(request).then((cached) => {
+          const network = Promise.resolve(event.preloadResponse)
+            .then((response) => response || fetch(request))
+            .then((response) => {
+              if (response.ok) {
+                const copy = response.clone();
+                void caches
+                  .open(STATIC_CACHE)
+                  .then((cache) => cache.put(request, copy));
+              }
+              return response;
+            });
+
+          event.waitUntil(network.catch(() => undefined));
+          return cached || network.catch(() => caches.match(OFFLINE_URL));
+        }),
+      );
+      return;
+    }
+
+    event.respondWith(
+      Promise.resolve(event.preloadResponse)
+        .then((response) => response || fetch(request))
+        .catch(() => caches.match(OFFLINE_URL)),
+    );
   }
 });
 

@@ -1,18 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { Activity, BarChart3, Flame, Target } from "lucide-react";
 
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import { createClient } from "@/services/supabase/client";
 import { getProgressData } from "@/services/api/progress";
@@ -26,29 +19,52 @@ type Session = {
   created_at: string;
 };
 
+const ProgressChart = dynamic(
+  () => import("./progress-chart").then((module) => module.ProgressChart),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="h-full w-full" />,
+  },
+);
+
 export function ProgressPage() {
   const { activeExamType, setActiveExamType } = useExamStore();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [streak, setStreak] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadData() {
-      const supabase = createClient();
+      try {
+        setLoading(true);
+        setError(null);
+        const supabase = createClient();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        const user = session?.user;
+        if (!user) throw new Error("Please sign in to view progress.");
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+        const [progressData, currentStreak] = await Promise.all([
+          getProgressData(user.id, activeExamType),
+          getCurrentStreak(supabase, user.id),
+        ]);
 
-      if (!user) return;
-
-      const progressData = await getProgressData(user.id, activeExamType);
-
-      setSessions(progressData);
-
-      setStreak(await getCurrentStreak(supabase, user.id));
+        setSessions(progressData);
+        setStreak(currentStreak);
+      } catch (loadError) {
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Could not load progress.",
+        );
+      } finally {
+        setLoading(false);
+      }
     }
 
-    loadData();
+    void loadData();
   }, [activeExamType]);
 
   const chartData = useMemo(() => {
@@ -103,6 +119,39 @@ export function ProgressPage() {
     },
   ];
 
+  if (loading) {
+    return (
+      <div
+        className="space-y-6"
+        aria-label="Loading progress analytics"
+        role="status"
+      >
+        <div className="space-y-3">
+          <Skeleton className="h-9 w-28" />
+          <Skeleton className="h-8 w-52" />
+          <Skeleton className="h-4 w-80" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-4">
+          {[0, 1, 2, 3].map((item) => (
+            <Skeleton key={item} className="h-28" />
+          ))}
+        </div>
+        <Skeleton className="h-80 w-full" />
+        <Skeleton className="h-52 w-full" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="mx-auto max-w-xl">
+        <CardContent className="p-8 text-center text-sm text-destructive">
+          {error}
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -150,20 +199,7 @@ export function ProgressPage() {
         </CardHeader>
 
         <CardContent className="h-[320px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-
-              <Line
-                type="monotone"
-                dataKey="score"
-                stroke="#185FA5"
-                strokeWidth={3}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          <ProgressChart data={chartData} />
         </CardContent>
       </Card>
 

@@ -36,12 +36,12 @@ export default async function DashboardRoute() {
     user?.email?.split("@")[0] ??
     "Student";
 
-  const dashboardData = user
-    ? await getDashboardData(supabase, user.id, "jamb")
-    : null;
-  const waecDashboardData = user
-    ? await getDashboardData(supabase, user.id, "waec")
-    : null;
+  const [dashboardData, waecDashboardData] = user
+    ? await Promise.all([
+        getDashboardData(supabase, user.id, "jamb"),
+        getDashboardData(supabase, user.id, "waec"),
+      ])
+    : [null, null];
 
   return (
     <DashboardPage
