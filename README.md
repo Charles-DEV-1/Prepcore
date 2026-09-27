@@ -42,4 +42,10 @@ supabase/
 
 The public landing page can render without Supabase credentials. Authenticated actions require Supabase environment variables.
 
+## Production push notification schedule
+
+The protected `/api/cron/notifications` endpoint sends streak warnings, study reminders, weekly summaries, admin announcements, and automatic study tips. Production currently has an hourly caller; keep it configured with the production `CRON_SECRET`. The daily Vercel cron in `vercel.json` remains a fallback. If the hourly caller stops, restore it before expecting warnings in the final two hours of a streak. An hourly schedule is best effort rather than exact to the minute.
+
+Students must enable notifications on their device and opt in to Study tips or Streak protection in Settings. Tips are considered every hour, delivered during local daytime after at least 12 hours, and remain subject to the database limit of two notification claims per rolling 24 hours. An active streak reserves one of those slots for its expiry warning.
+
 Deployment verification marker: production redeploy trigger.

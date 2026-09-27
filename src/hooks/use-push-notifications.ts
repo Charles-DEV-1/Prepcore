@@ -274,16 +274,25 @@ export function usePushNotifications() {
   const enabledByPreference =
     preferences.studyReminders ||
     preferences.streakReminders ||
-    preferences.contentNotifications;
+    preferences.contentNotifications ||
+    preferences.studyTips ||
+    preferences.newsNotifications ||
+    preferences.weeklySummary;
 
   const status = useMemo<NotificationStatus>(() => {
     if (isInitializing) return "checking";
     if (!supported) return "unsupported";
     if (permission === "denied") return "blocked";
     if (!enabledByPreference) return "disabled";
-    if (permission !== "granted") return "needs-permission";
+    if (permission !== "granted" || !subscription) return "needs-permission";
     return "enabled";
-  }, [enabledByPreference, isInitializing, permission, supported]);
+  }, [
+    enabledByPreference,
+    isInitializing,
+    permission,
+    subscription,
+    supported,
+  ]);
 
   const togglePreference = useCallback(
     async (

@@ -24,8 +24,8 @@ const statusCopy = {
     icon: Clock3,
   },
   "needs-permission": {
-    label: "Needs permission",
-    text: "Allow browser notifications to receive streak and study reminders.",
+    label: "Needs setup",
+    text: "Select Enable reminders to connect this browser for study notifications.",
     icon: ShieldAlert,
   },
   blocked: {
@@ -61,7 +61,10 @@ export function ReminderSettingsCard() {
   const hasActivePreference =
     preferences.studyReminders ||
     preferences.streakReminders ||
-    preferences.contentNotifications;
+    preferences.contentNotifications ||
+    preferences.studyTips ||
+    preferences.newsNotifications ||
+    preferences.weeklySummary;
 
   return (
     <Card className="border-border bg-card shadow-sm">
@@ -122,28 +125,47 @@ export function ReminderSettingsCard() {
           />
           <ReminderToggle
             checked={preferences.studyTips}
-            description="Receive occasional practical tips that help you study better."
-            disabled={isBusy || isInitializing || status === "unsupported" || status === "blocked"}
+            description="Get a practical tip about every 12 hours during daytime, subject to notification limits."
+            disabled={
+              isBusy ||
+              isInitializing ||
+              status === "unsupported" ||
+              status === "blocked"
+            }
             label="Study tips"
             onChange={(checked) => void togglePreference("studyTips", checked)}
           />
           <ReminderToggle
             checked={preferences.newsNotifications}
             description="Hear about useful new content and important Prepcore updates."
-            disabled={isBusy || isInitializing || status === "unsupported" || status === "blocked"}
+            disabled={
+              isBusy ||
+              isInitializing ||
+              status === "unsupported" ||
+              status === "blocked"
+            }
             label="Prepcore updates"
-            onChange={(checked) => void togglePreference("newsNotifications", checked)}
+            onChange={(checked) =>
+              void togglePreference("newsNotifications", checked)
+            }
           />
           <ReminderToggle
             checked={preferences.weeklySummary}
             description="Get a short weekly summary of your study activity."
-            disabled={isBusy || isInitializing || status === "unsupported" || status === "blocked"}
+            disabled={
+              isBusy ||
+              isInitializing ||
+              status === "unsupported" ||
+              status === "blocked"
+            }
             label="Weekly summary"
-            onChange={(checked) => void togglePreference("weeklySummary", checked)}
+            onChange={(checked) =>
+              void togglePreference("weeklySummary", checked)
+            }
           />
           <ReminderToggle
             checked={preferences.streakReminders}
-            description="Warn me when my current streak is close to breaking."
+            description="Warn me within two hours before my current streak expires."
             disabled={
               isBusy ||
               isInitializing ||

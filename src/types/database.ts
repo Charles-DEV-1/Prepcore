@@ -91,7 +91,9 @@ export type Database = {
           user_agent: string | null;
           created_at: string;
         };
-        Insert: Partial<Database["public"]["Tables"]["diagnostic_test_results"]["Row"]> & {
+        Insert: Partial<
+          Database["public"]["Tables"]["diagnostic_test_results"]["Row"]
+        > & {
           department: string;
           subjects_tested: string[];
           total_questions: number;
@@ -101,7 +103,9 @@ export type Database = {
           subject_breakdown: Json;
           session_token: string;
         };
-        Update: Partial<Database["public"]["Tables"]["diagnostic_test_results"]["Row"]>;
+        Update: Partial<
+          Database["public"]["Tables"]["diagnostic_test_results"]["Row"]
+        >;
         Relationships: [];
       };
       sessions: {
@@ -128,7 +132,15 @@ export type Database = {
           user_id: string;
           rating: number;
           comment: string | null;
-          feedback_type: "general" | "practice" | "exam" | "flashcards" | "weekly_quiz" | "leaderboard" | "website" | "other";
+          feedback_type:
+            | "general"
+            | "practice"
+            | "exam"
+            | "flashcards"
+            | "weekly_quiz"
+            | "leaderboard"
+            | "website"
+            | "other";
           feature_context: string | null;
           source_page: string;
           prompt_trigger: string;
@@ -157,10 +169,14 @@ export type Database = {
           last_submitted_at: string | null;
           updated_at: string;
         };
-        Insert: Partial<Database["public"]["Tables"]["feedback_prompt_state"]["Row"]> & {
+        Insert: Partial<
+          Database["public"]["Tables"]["feedback_prompt_state"]["Row"]
+        > & {
           user_id: string;
         };
-        Update: Partial<Database["public"]["Tables"]["feedback_prompt_state"]["Row"]>;
+        Update: Partial<
+          Database["public"]["Tables"]["feedback_prompt_state"]["Row"]
+        >;
         Relationships: [];
       };
       pwa_installations: {
@@ -172,10 +188,14 @@ export type Database = {
           installed_at: string;
           created_at: string;
         };
-        Insert: Partial<Database["public"]["Tables"]["pwa_installations"]["Row"]> & {
+        Insert: Partial<
+          Database["public"]["Tables"]["pwa_installations"]["Row"]
+        > & {
           installation_id: string;
         };
-        Update: Partial<Database["public"]["Tables"]["pwa_installations"]["Row"]>;
+        Update: Partial<
+          Database["public"]["Tables"]["pwa_installations"]["Row"]
+        >;
         Relationships: [];
       };
       notification_preferences: {
@@ -194,10 +214,14 @@ export type Database = {
           created_at: string;
           updated_at: string;
         };
-        Insert: Partial<Database["public"]["Tables"]["notification_preferences"]["Row"]> & {
+        Insert: Partial<
+          Database["public"]["Tables"]["notification_preferences"]["Row"]
+        > & {
           user_id: string;
         };
-        Update: Partial<Database["public"]["Tables"]["notification_preferences"]["Row"]>;
+        Update: Partial<
+          Database["public"]["Tables"]["notification_preferences"]["Row"]
+        >;
         Relationships: [];
       };
       push_subscriptions: {
@@ -213,13 +237,17 @@ export type Database = {
           created_at: string;
           updated_at: string;
         };
-        Insert: Partial<Database["public"]["Tables"]["push_subscriptions"]["Row"]> & {
+        Insert: Partial<
+          Database["public"]["Tables"]["push_subscriptions"]["Row"]
+        > & {
           user_id: string;
           endpoint: string;
           p256dh: string;
           auth: string;
         };
-        Update: Partial<Database["public"]["Tables"]["push_subscriptions"]["Row"]>;
+        Update: Partial<
+          Database["public"]["Tables"]["push_subscriptions"]["Row"]
+        >;
         Relationships: [];
       };
       notification_logs: {
@@ -238,14 +266,18 @@ export type Database = {
           sent_at: string;
           created_at: string;
         };
-        Insert: Partial<Database["public"]["Tables"]["notification_logs"]["Row"]> & {
+        Insert: Partial<
+          Database["public"]["Tables"]["notification_logs"]["Row"]
+        > & {
           user_id: string;
           notification_type: string;
           title: string;
           body: string;
           delivery_status: "sent" | "failed" | "expired" | "skipped";
         };
-        Update: Partial<Database["public"]["Tables"]["notification_logs"]["Row"]>;
+        Update: Partial<
+          Database["public"]["Tables"]["notification_logs"]["Row"]
+        >;
         Relationships: [];
       };
       notification_content: {
@@ -262,12 +294,16 @@ export type Database = {
           created_at: string;
           updated_at: string;
         };
-        Insert: Partial<Database["public"]["Tables"]["notification_content"]["Row"]> & {
+        Insert: Partial<
+          Database["public"]["Tables"]["notification_content"]["Row"]
+        > & {
           notification_type: "study_tip" | "news" | "announcement";
           title: string;
           body: string;
         };
-        Update: Partial<Database["public"]["Tables"]["notification_content"]["Row"]>;
+        Update: Partial<
+          Database["public"]["Tables"]["notification_content"]["Row"]
+        >;
         Relationships: [];
       };
       notification_scheduler_runs: {
@@ -283,8 +319,30 @@ export type Database = {
           error_message: string | null;
           created_at: string;
         };
-        Insert: Partial<Database["public"]["Tables"]["notification_scheduler_runs"]["Row"]>;
-        Update: Partial<Database["public"]["Tables"]["notification_scheduler_runs"]["Row"]>;
+        Insert: Partial<
+          Database["public"]["Tables"]["notification_scheduler_runs"]["Row"]
+        >;
+        Update: Partial<
+          Database["public"]["Tables"]["notification_scheduler_runs"]["Row"]
+        >;
+        Relationships: [];
+      };
+      notification_delivery_claims: {
+        Row: {
+          id: string;
+          user_id: string;
+          delivery_key: string;
+          claimed_at: string;
+        };
+        Insert: Partial<
+          Database["public"]["Tables"]["notification_delivery_claims"]["Row"]
+        > & {
+          user_id: string;
+          delivery_key: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["notification_delivery_claims"]["Row"]
+        >;
         Relationships: [];
       };
       answers: {
@@ -690,11 +748,15 @@ export type Database = {
           last_success_at: string | null;
           updated_at: string;
         };
-        Insert: Partial<Database["public"]["Tables"]["question_cache_state"]["Row"]> & {
+        Insert: Partial<
+          Database["public"]["Tables"]["question_cache_state"]["Row"]
+        > & {
           subject_id: string;
           exam_type: "jamb" | "waec";
         };
-        Update: Partial<Database["public"]["Tables"]["question_cache_state"]["Row"]>;
+        Update: Partial<
+          Database["public"]["Tables"]["question_cache_state"]["Row"]
+        >;
         Relationships: [];
       };
       question_reports: {
