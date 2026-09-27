@@ -1,18 +1,19 @@
-import { FlatCompat } from "@eslint/eslintrc";
-import { dirname } from "path";
-import { fileURLToPath } from "url";
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTypescript from "eslint-config-next/typescript";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
-
-const eslintConfig = [
+const eslintConfig = defineConfig([
+  ...nextVitals,
+  ...nextTypescript,
   {
-    ignores: [".next/**", "node_modules/**", "out/**", "dist/**", "coverage/**"],
+    rules: {
+      // Existing effects/memoization predate this security upgrade. Migrate
+      // them separately rather than allowing unrelated UI rewrites here.
+      "react-hooks/set-state-in-effect": "off",
+      "react-hooks/preserve-manual-memoization": "off",
+    },
   },
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
-];
+  globalIgnores([".next/**", "node_modules/**", "out/**", "dist/**", "coverage/**", "next-env.d.ts", ".codex-notification-backup-20260921/**", "supabase/.temp/**"]),
+]);
 
 export default eslintConfig;

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { hasTrustedOrigin, noStoreJson, readSafeJson } from "@/lib/api-security";
-import { rateLimit } from "@/lib/rate-limit";
+import { sharedRateLimit } from "@/lib/rate-limit";
 import { isAllowedPushEndpoint, isValidPushKey } from "@/lib/push-policy";
 import { createClient } from "@/services/supabase/server";
 
@@ -20,9 +20,8 @@ async function getAuthenticatedClient() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { supabase, user: null };
-  const limit = rateLimit({
-    // An authenticated attacker can spoof forwarded IP headers. The account
-    // identifier is the stable key for this per-process abuse guard.
+  const limit = await sharedRateLimit({
+    // The account identifier is stable across instances and client IP changes.
     key: `notifications:subscription:${user.id}`,
     limit: 20,
     windowMs: 60 * 60 * 1000,

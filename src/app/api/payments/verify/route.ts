@@ -1,4 +1,4 @@
-import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { getClientIp, sharedRateLimit } from "@/lib/rate-limit";
 import { noStoreJson } from "@/lib/api-security";
 import { createClient } from "@/services/supabase/server";
 import { verifyAndActivatePayment } from "@/services/payments/payment-service";
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
 
   try {
     const ip = getClientIp(request);
-    const ipLimit = rateLimit({
+    const ipLimit = await sharedRateLimit({
       key: `payments:verify:ip:${ip}`,
       limit: 30,
       windowMs: 10 * 60 * 1000,
@@ -56,7 +56,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const userLimit = rateLimit({
+    const userLimit = await sharedRateLimit({
       key: `payments:verify:user:${user.id}`,
       limit: 10,
       windowMs: 10 * 60 * 1000,

@@ -897,6 +897,14 @@ export type Database = {
         Args: { p_user_id: string; p_delivery_key: string };
         Returns: boolean;
       };
+      claim_api_rate_limit_slot: {
+        Args: {
+          p_bucket_hash: string;
+          p_max_hits: number;
+          p_window_seconds: number;
+        };
+        Returns: Array<{ allowed: boolean; remaining: number; retry_after_seconds: number }>;
+      };
     };
     Enums: {
       exam_type: "jamb" | "waec";

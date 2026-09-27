@@ -16,7 +16,8 @@ export function hasTrustedOrigin(request: Request) {
   const origin = request.headers.get("origin");
   if (!origin) return true;
   try {
-    return new URL(origin).host === request.headers.get("host");
+    const parsed = new URL(origin);
+    return parsed.origin === new URL(request.url).origin;
   } catch {
     return false;
   }
@@ -26,7 +27,7 @@ export async function readSafeJson<T>(request: Request): Promise<T | null> {
   const contentLength = Number(request.headers.get("content-length") ?? 0);
   if (contentLength > MAX_JSON_BYTES) return null;
   const text = await request.text();
-  if (text.length > MAX_JSON_BYTES) return null;
+  if (Buffer.byteLength(text, "utf8") > MAX_JSON_BYTES) return null;
   try {
     return JSON.parse(text) as T;
   } catch {

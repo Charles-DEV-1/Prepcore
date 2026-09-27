@@ -1,3 +1,6 @@
+import { createHmac } from "node:crypto";
+import { createServiceRoleClient } from "@/services/supabase/admin";
+
 type RateLimitOptions = {
   key: string;
   limit: number;
@@ -59,8 +62,34 @@ export function rateLimit({ key, limit, windowMs }: RateLimitOptions) {
   };
 }
 
+export async function sharedRateLimit(options: RateLimitOptions) {
+  const local = rateLimit(options);
+  if (!local.allowed) return local;
+
+  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!secret) throw new Error("Shared rate limit is not configured.");
+  const bucketHash = createHmac("sha256", secret).update(options.key).digest("hex");
+  const { data, error } = await createServiceRoleClient().rpc("claim_api_rate_limit_slot", {
+    p_bucket_hash: bucketHash,
+    p_max_hits: options.limit,
+    p_window_seconds: Math.ceil(options.windowMs / 1000),
+  });
+  if (error || !data?.[0]) {
+    console.error("shared_rate_limit_unavailable", error?.code ?? "empty_response");
+    throw new Error("Shared rate limit is unavailable.");
+  }
+  return {
+    allowed: data[0].allowed,
+    remaining: data[0].remaining,
+    resetAt: Date.now() + data[0].retry_after_seconds * 1000,
+    retryAfterSeconds: data[0].retry_after_seconds,
+  };
+}
+
 export function getClientIp(request: Request) {
-  const forwardedFor = request.headers.get("x-forwarded-for");
+  const forwardedFor = process.env.VERCEL
+    ? request.headers.get("x-vercel-forwarded-for")
+    : request.headers.get("x-forwarded-for");
   if (forwardedFor) return forwardedFor.split(",")[0]?.trim() ?? "unknown";
 
   return (

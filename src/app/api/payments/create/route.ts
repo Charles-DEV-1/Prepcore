@@ -1,4 +1,4 @@
-import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { getClientIp, sharedRateLimit } from "@/lib/rate-limit";
 import { hasTrustedOrigin, noStoreJson, readSafeJson } from "@/lib/api-security";
 import { createClient } from "@/services/supabase/server";
 import { createPayment } from "@/services/payments/payment-service";
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
       return noStoreJson({ error: "Invalid request origin." }, { status: 403 });
     }
     const ip = getClientIp(request);
-    const ipLimit = rateLimit({
+    const ipLimit = await sharedRateLimit({
       key: `payments:create:ip:${ip}`,
       limit: 20,
       windowMs: 10 * 60 * 1000,
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
       return noStoreJson({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userLimit = rateLimit({
+    const userLimit = await sharedRateLimit({
       key: `payments:create:user:${user.id}`,
       limit: 6,
       windowMs: 10 * 60 * 1000,

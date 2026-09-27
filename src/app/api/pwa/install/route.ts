@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { hasTrustedOrigin, noStoreJson, readSafeJson } from "@/lib/api-security";
-import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { getClientIp, sharedRateLimit } from "@/lib/rate-limit";
 import { createServiceRoleClient } from "@/services/supabase/admin";
 import { createClient } from "@/services/supabase/server";
 
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     return noStoreJson({ error: "Invalid request origin." }, { status: 403 });
   }
 
-  const limit = rateLimit({
+  const limit = await sharedRateLimit({
     key: `pwa-install:${getClientIp(request)}`,
     limit: 20,
     windowMs: 60 * 60 * 1000,

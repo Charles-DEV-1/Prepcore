@@ -1,7 +1,7 @@
 import { createClient } from "@/services/supabase/server";
 import { createServiceRoleClient } from "@/services/supabase/admin";
 import { refillQuestionCacheForSubject } from "@/services/questions/aloc-cache";
-import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { sharedRateLimit } from "@/lib/rate-limit";
 import {
   hasTrustedOrigin,
   noStoreJson,
@@ -147,8 +147,8 @@ async function handlePost(request: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return noStoreJson({ error: "Unauthorized" }, { status: 401 });
-  const limitResult = rateLimit({
-    key: `questions:session:${user.id}:${getClientIp(request)}`,
+  const limitResult = await sharedRateLimit({
+    key: `questions:session:${user.id}`,
     limit: 30,
     windowMs: 10 * 60 * 1000,
   });

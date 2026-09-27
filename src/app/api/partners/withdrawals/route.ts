@@ -1,13 +1,13 @@
 import { getPartnerSession } from "@/lib/partner-auth";
 import { createServiceRoleClient } from "@/services/supabase/admin";
 import { createFlutterwaveTransfer, resolveFlutterwaveAccount } from "@/services/payments/flutterwave-transfers";
-import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { sharedRateLimit } from "@/lib/rate-limit";
 import { hasTrustedOrigin, noStoreJson, readSafeJson } from "@/lib/api-security";
 export const runtime = "nodejs";
 export async function POST(request: Request) {
   if (!hasTrustedOrigin(request)) return noStoreJson({ error: "Invalid request origin." }, { status: 403 });
   const session = await getPartnerSession(); if (!session) return noStoreJson({error:"Unauthorized"},{status:401});
-  const limit = rateLimit({ key: `partner:withdrawal:${session.partnerId}:${getClientIp(request)}`, limit: 3, windowMs: 60 * 60 * 1000 });
+  const limit = await sharedRateLimit({ key: `partner:withdrawal:${session.partnerId}`, limit: 3, windowMs: 60 * 60 * 1000 });
   if (!limit.allowed) return noStoreJson({ error: "Too many withdrawal attempts. Try again later." }, { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } });
   const body = await readSafeJson<Record<string, unknown>>(request); if (!body) return noStoreJson({ error: "Invalid request." }, { status: 400 }); const amount = Number(body.amount); const accountNumber = String(body.account_number ?? "").replace(/\s/g, ""); const bankCode = String(body.bank_code ?? ""); const bankName = String(body.bank_name ?? "").trim();
   if (!Number.isInteger(amount) || amount < 1 || !/^\d{10}$/.test(accountNumber) || !/^[A-Za-z0-9-]{2,20}$/.test(bankCode) || !bankName) return noStoreJson({error:"Enter a valid amount and Nigerian bank account."},{status:400});

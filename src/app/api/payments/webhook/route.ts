@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
-import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { getClientIp, sharedRateLimit } from "@/lib/rate-limit";
 import {
   markWebhookEventProcessed,
   rememberWebhookEvent,
@@ -34,7 +34,7 @@ function getEventKey(rawBody: string, payload: FlutterwaveWebhookPayload) {
 
 export async function POST(request: Request) {
   const ip = getClientIp(request);
-  const ipLimit = rateLimit({
+  const ipLimit = await sharedRateLimit({
     key: `payments:webhook:ip:${ip}`,
     limit: 120,
     windowMs: 10 * 60 * 1000,

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { hasTrustedOrigin, noStoreJson, readSafeJson } from "@/lib/api-security";
-import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { sharedRateLimit } from "@/lib/rate-limit";
 import { createServiceRoleClient } from "@/services/supabase/admin";
 import { createClient } from "@/services/supabase/server";
 
@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return noStoreJson({ error: "Unauthorized." }, { status: 401 });
-  const limit = rateLimit({ key: `feedback:submit:${user.id}:${getClientIp(request)}`, limit: 6, windowMs: 60 * 60 * 1000 });
+  const limit = await sharedRateLimit({ key: `feedback:submit:${user.id}`, limit: 6, windowMs: 60 * 60 * 1000 });
   if (!limit.allowed) return noStoreJson({ error: "Please wait before sending more feedback." }, { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } });
   const parsed = feedbackSchema.safeParse(await readSafeJson<unknown>(request));
   if (!parsed.success) return noStoreJson({ error: "Choose a rating from 1 to 5 before sending." }, { status: 400 });

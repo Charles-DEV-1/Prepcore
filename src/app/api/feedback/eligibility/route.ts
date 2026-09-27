@@ -1,5 +1,5 @@
 import { noStoreJson } from "@/lib/api-security";
-import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { sharedRateLimit } from "@/lib/rate-limit";
 import { createServiceRoleClient } from "@/services/supabase/admin";
 import { createClient } from "@/services/supabase/server";
 
@@ -7,11 +7,11 @@ const MIN_COMPLETED_ACTIVITIES = 3;
 const SUBMISSION_COOLDOWN_DAYS = 45;
 const PROMPT_COOLDOWN_HOURS = 24;
 
-export async function GET(request: Request) {
+export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return noStoreJson({ eligible: false }, { status: 401 });
-  const limit = rateLimit({ key: `feedback:eligibility:${user.id}:${getClientIp(request)}`, limit: 30, windowMs: 60 * 60 * 1000 });
+  const limit = await sharedRateLimit({ key: `feedback:eligibility:${user.id}`, limit: 30, windowMs: 60 * 60 * 1000 });
   if (!limit.allowed) return noStoreJson({ eligible: false }, { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } });
 
   const admin = createServiceRoleClient();
