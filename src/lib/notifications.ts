@@ -1,4 +1,5 @@
 import webpush from "web-push";
+import { isAllowedPushEndpoint, pushDeliveryPolicy, type PushType } from "@/lib/push-policy";
 
 let configured = false;
 
@@ -18,14 +19,8 @@ export type PushPayload = {
   title: string;
   body: string;
   url: "/dashboard" | "/practice";
-  type:
-    | "streak_reminder"
-    | "study_reminder"
-    | "study_tip"
-    | "news"
-    | "announcement"
-    | "weekly_summary"
-    | "test";
+  type: PushType;
+  expiresAt?: string;
 };
 
 export async function sendWebPush(
@@ -36,6 +31,15 @@ export async function sendWebPush(
   },
   payload: PushPayload,
 ) {
+  if (!isAllowedPushEndpoint(subscription.endpoint)) {
+    throw Object.assign(new Error("Untrusted push endpoint."), { statusCode: "invalid_endpoint" });
+  }
+  const policy = pushDeliveryPolicy(payload.type, Date.now(), payload.expiresAt);
+  if (!policy) return null;
   configureWebPush();
-  return webpush.sendNotification(subscription, JSON.stringify(payload));
+  return webpush.sendNotification(
+    subscription,
+    JSON.stringify({ ...payload, expiresAt: policy.expiresAt }),
+    policy.options,
+  );
 }

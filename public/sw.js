@@ -1,4 +1,4 @@
-const VERSION = "prepcore-static-v3";
+const VERSION = "prepcore-static-v4";
 const STATIC_CACHE = `${VERSION}-assets`;
 const OFFLINE_URL = "/offline";
 const PUBLIC_PAGES = ["/", "/login", "/signup", "/privacy-policy"];
@@ -133,43 +133,34 @@ self.addEventListener("fetch", (event) => {
 });
 
 function readNotificationPayload(data) {
-  const fallback = {
-    title: "Keep your streak alive",
-    body: "It has been 24 hours since your last study session. Come back and keep going.",
-    type: "streak_reminder",
-    url: "/dashboard",
-  };
-
-  if (!data) return fallback;
-
+  if (!data) return null;
   try {
     const parsed = data.json();
-    return {
-      title: typeof parsed.title === "string" ? parsed.title : fallback.title,
-      body: typeof parsed.body === "string" ? parsed.body : fallback.body,
-      type: typeof parsed.type === "string" ? parsed.type : fallback.type,
-      url: typeof parsed.url === "string" ? parsed.url : fallback.url,
-    };
+    const validTypes = new Set([
+      "streak_reminder", "study_reminder", "study_tip", "news",
+      "announcement", "weekly_summary", "test",
+    ]);
+    if (!parsed || typeof parsed !== "object" ||
+      typeof parsed.title !== "string" || !parsed.title.trim() || parsed.title.length > 120 ||
+      typeof parsed.body !== "string" || !parsed.body.trim() || parsed.body.length > 500 ||
+      !validTypes.has(parsed.type) ||
+      (parsed.url !== "/dashboard" && parsed.url !== "/practice") ||
+      typeof parsed.expiresAt !== "string") return null;
+    const expiresAt = Date.parse(parsed.expiresAt);
+    if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) return null;
+    return parsed;
   } catch {
-    return {
-      ...fallback,
-      body: data.text() || fallback.body,
-    };
+    return null;
   }
 }
 
 function getSafeAppUrl(path) {
-  try {
-    const url = new URL(path, self.location.origin);
-    if (url.origin !== self.location.origin) return "/dashboard";
-    return `${url.pathname}${url.search}${url.hash}`;
-  } catch {
-    return "/dashboard";
-  }
+  return path === "/practice" ? "/practice" : "/dashboard";
 }
 
 self.addEventListener("push", (event) => {
   const payload = readNotificationPayload(event.data);
+  if (!payload) return;
   const url = getSafeAppUrl(payload.url);
   const tag =
     payload.type === "test"

@@ -22,7 +22,9 @@ export async function POST(request: Request) {
     .from("push_subscriptions")
     .select("id, endpoint, expiration_time, p256dh, auth, platform")
     .eq("user_id", parsed.data.userId)
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .order("updated_at", { ascending: false })
+    .limit(5);
   if (subscriptionError) return noStoreJson({ error: "Could not load push subscriptions." }, { status: 500 });
   if (!subscriptions?.length) return noStoreJson({ error: "No active push subscription found for this user." }, { status: 404 });
 
@@ -37,11 +39,12 @@ export async function POST(request: Request) {
   const errors: string[] = [];
   for (const subscription of subscriptions) {
     try {
-      await sendWebPush({
+      const response = await sendWebPush({
         endpoint: subscription.endpoint,
         expirationTime: subscription.expiration_time,
         keys: { p256dh: subscription.p256dh, auth: subscription.auth },
       }, payload);
+      if (!response) continue;
       sent += 1;
       await admin.from("notification_logs").insert({ user_id: parsed.data.userId, subscription_id: subscription.id, notification_type: "test", title: payload.title, body: payload.body, url: payload.url, delivery_status: "sent" } as never);
     } catch (error) {
@@ -54,10 +57,10 @@ export async function POST(request: Request) {
         statusCode,
         errorMessage,
       });
-      if (statusCode === "404" || statusCode === "410") {
+      if (statusCode === "404" || statusCode === "410" || statusCode === "invalid_endpoint") {
         await admin.from("push_subscriptions").update({ is_active: false, updated_at: new Date().toISOString() } as never).eq("id", subscription.id);
       }
-      await admin.from("notification_logs").insert({ user_id: parsed.data.userId, subscription_id: subscription.id, notification_type: "test", title: payload.title, body: payload.body, url: payload.url, delivery_status: statusCode === "404" || statusCode === "410" ? "expired" : "failed", error_code: statusCode } as never);
+      await admin.from("notification_logs").insert({ user_id: parsed.data.userId, subscription_id: subscription.id, notification_type: "test", title: payload.title, body: payload.body, url: payload.url, delivery_status: statusCode === "404" || statusCode === "410" || statusCode === "invalid_endpoint" ? "expired" : "failed", error_code: statusCode } as never);
     }
   }
 

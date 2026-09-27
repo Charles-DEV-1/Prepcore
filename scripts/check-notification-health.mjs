@@ -1,4 +1,5 @@
 import { createRequire } from "node:module";
+import { isAllowedPushEndpoint, isValidPushKey } from "../src/lib/push-policy.ts";
 
 const require = createRequire(import.meta.url);
 const { loadEnvConfig } = require("@next/env");
@@ -67,7 +68,7 @@ console.log(
 
 const [subscriptionRows, preferenceRows, streakRows, contentRows, recentLogs] =
   await Promise.all([
-    admin.from("push_subscriptions").select("user_id").eq("is_active", true),
+    admin.from("push_subscriptions").select("user_id, endpoint, p256dh, auth").eq("is_active", true),
     admin
       .from("notification_preferences")
       .select(
@@ -98,6 +99,11 @@ for (const [label, response] of [
 }
 
 const subscribed = new Set(subscriptionRows.data.map((row) => row.user_id));
+console.log("Invalid active push subscriptions:", subscriptionRows.data.filter((row) =>
+  !isAllowedPushEndpoint(row.endpoint) ||
+  !isValidPushKey(row.p256dh, 65) ||
+  !isValidPushKey(row.auth, 16)
+).length);
 const streaks = new Map(streakRows.data.map((row) => [row.user_id, row]));
 const tipSubscribers = preferenceRows.data.filter(
   (row) =>

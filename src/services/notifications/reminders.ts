@@ -77,7 +77,9 @@ async function deliverToUser(
     .from("push_subscriptions")
     .select("id, endpoint, expiration_time, p256dh, auth")
     .eq("user_id", userId)
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .order("updated_at", { ascending: false })
+    .limit(5);
   if (error) throw error;
   if (!subscriptions?.length) {
     return { sent: 0, failed: 0, expired: 0 };
@@ -120,7 +122,7 @@ async function deliverToUser(
   let expired = 0;
   for (const subscription of subscriptions ?? []) {
     try {
-      await sendWebPush(
+      const response = await sendWebPush(
         {
           endpoint: subscription.endpoint,
           expirationTime: subscription.expiration_time,
@@ -128,6 +130,7 @@ async function deliverToUser(
         },
         payload,
       );
+      if (!response) continue;
       sent += 1;
       await admin.from("notification_logs").insert({
         user_id: userId,
@@ -146,7 +149,7 @@ async function deliverToUser(
         error && typeof error === "object" && "statusCode" in error
           ? String(error.statusCode)
           : "unknown";
-      const isExpired = statusCode === "404" || statusCode === "410";
+      const isExpired = statusCode === "404" || statusCode === "410" || statusCode === "invalid_endpoint";
       if (isExpired) {
         expired += 1;
         await admin
@@ -237,6 +240,9 @@ export async function sendDueStreakReminders(): Promise<ReminderResult> {
           : "Your Prepcore study session is waiting. Come back for a short practice round.",
       url: "/practice" as const,
       type: reminderType as "streak_reminder" | "study_reminder",
+      expiresAt: reminderType === "streak_reminder"
+        ? new Date(Date.parse(streak.last_activity_at) + STREAK_WINDOW_MS).toISOString()
+        : undefined,
     };
     const delivery = await deliverToUser(admin, preference.user_id, payload, {
       source: "study_reminder",
@@ -336,7 +342,7 @@ export async function sendDueEngagementNotifications(): Promise<NotificationResu
   const now = new Date();
   const { data: content, error: contentError } = await admin
     .from("notification_content")
-    .select("id, notification_type, title, body, url")
+    .select("id, notification_type, title, body, url, expires_at")
     .eq("status", "published")
     .lte("scheduled_at", now.toISOString())
     .or(`expires_at.is.null,expires_at.gt.${now.toISOString()}`)
@@ -397,6 +403,7 @@ export async function sendDueEngagementNotifications(): Promise<NotificationResu
           body: item.body,
           url: item.url === "/practice" ? "/practice" : "/dashboard",
           type: item.notification_type,
+          expiresAt: item.expires_at ?? undefined,
         },
         {
           contentId: item.id,
