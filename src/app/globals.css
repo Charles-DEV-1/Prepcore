@@ -2,6 +2,78 @@
 @tailwind components;
 @tailwind utilities;
 
+/* The OS splash is static; this CSS-only handoff runs once on a cold PWA launch. */
+.pwa-launch-splash {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  place-items: center;
+  background: #0f172a;
+  color: #f8fafc;
+  animation: pwa-launch-exit 220ms ease-out 620ms both;
+}
+
+.pwa-launch-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.pwa-launch-mark {
+  width: 112px;
+  height: 112px;
+  background: url("/favicons/android-chrome-192x192.png") center / 208px 208px no-repeat;
+  filter: drop-shadow(0 14px 30px rgba(37, 99, 235, 0.3));
+  animation: pwa-launch-rise 430ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.pwa-launch-name {
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  animation: pwa-launch-rise 360ms ease-out 110ms both;
+}
+
+.pwa-launch-line {
+  width: 104px;
+  height: 3px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: #60a5fa;
+  transform-origin: left;
+  animation: pwa-launch-progress 400ms ease-out 180ms both;
+}
+
+@keyframes pwa-launch-rise {
+  from { opacity: 0; transform: translateY(9px) scale(0.94); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes pwa-launch-progress {
+  from { opacity: 0; transform: scaleX(0); }
+  to { opacity: 1; transform: scaleX(1); }
+}
+
+@keyframes pwa-launch-exit {
+  from { opacity: 1; visibility: visible; }
+  to { opacity: 0; visibility: hidden; }
+}
+
+@media (display-mode: standalone) {
+  .pwa-launch-splash {
+    display: grid;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pwa-launch-splash {
+    display: none;
+  }
+}
+
 /* Prepcore — Dark Mode */
 html {
   transition:

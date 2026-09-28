@@ -2,7 +2,7 @@
   "name": "Prepcore",
   "short_name": "Prepcore",
   "description": "AI-powered JAMB, WAEC and NECO exam prep",
-  "theme_color": "#2563EB",
+  "theme_color": "#0F172A",
   "background_color": "#0F172A",
   "display": "standalone",
   "start_url": "/dashboard",

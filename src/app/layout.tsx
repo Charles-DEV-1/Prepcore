@@ -103,7 +103,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#2563EB",
+  themeColor: "#0F172A",
   width: "device-width",
   initialScale: 1,
 };
@@ -159,6 +159,13 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
+        <div className="pwa-launch-splash" aria-hidden="true">
+          <div className="pwa-launch-content">
+            <span className="pwa-launch-mark" />
+            <span className="pwa-launch-name">prepcore</span>
+            <span className="pwa-launch-line" />
+          </div>
+        </div>
         <AppProviders>{children}</AppProviders>
       </body>
     </html>
