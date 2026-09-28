@@ -9,25 +9,59 @@ export function noStoreJson(body: unknown, init?: ResponseInit) {
   return response;
 }
 
-// Browsers attach Origin to cross-site unsafe requests. Reject them before a
-// cookie-authenticated action can run; non-browser server callbacks are still
-// allowed and must use their own signatures (e.g. Flutterwave webhooks).
+// Browser mutation routes require same-origin provenance. Webhooks do not use
+// this helper; they authenticate with their provider signatures instead.
 export function hasTrustedOrigin(request: Request) {
   const origin = request.headers.get("origin");
-  if (!origin) return true;
+  const referer = request.headers.get("referer");
+  const source = origin ?? referer;
+  if (!source) return request.headers.get("sec-fetch-site") === "same-origin";
   try {
-    const parsed = new URL(origin);
+    const parsed = new URL(source);
     return parsed.origin === new URL(request.url).origin;
   } catch {
     return false;
   }
 }
 
+// Enforce the limit while reading, since Content-Length can be omitted or
+// incorrect (for example with chunked transfer encoding).
+export async function readBoundedText(
+  request: Request,
+  maxBytes: number,
+): Promise<string | null> {
+  const lengthHeader = request.headers.get("content-length");
+  if (lengthHeader !== null) {
+    const declaredLength = Number(lengthHeader);
+    if (!Number.isSafeInteger(declaredLength) || declaredLength < 0 || declaredLength > maxBytes)
+      return null;
+  }
+
+  if (!request.body) return null;
+  const reader = request.body.getReader();
+  const decoder = new TextDecoder();
+  let bytesRead = 0;
+  let body = "";
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytesRead += value.byteLength;
+      if (bytesRead > maxBytes) {
+        await reader.cancel().catch(() => undefined);
+        return null;
+      }
+      body += decoder.decode(value, { stream: true });
+    }
+    return body + decoder.decode();
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 export async function readSafeJson<T>(request: Request): Promise<T | null> {
-  const contentLength = Number(request.headers.get("content-length") ?? 0);
-  if (contentLength > MAX_JSON_BYTES) return null;
-  const text = await request.text();
-  if (Buffer.byteLength(text, "utf8") > MAX_JSON_BYTES) return null;
+  const text = await readBoundedText(request, MAX_JSON_BYTES);
+  if (text === null) return null;
   try {
     return JSON.parse(text) as T;
   } catch {

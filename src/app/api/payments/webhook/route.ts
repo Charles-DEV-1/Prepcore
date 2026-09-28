@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
+import { readBoundedText } from "@/lib/api-security";
 import { getClientIp, sharedRateLimit } from "@/lib/rate-limit";
 import {
   markWebhookEventProcessed,
@@ -50,12 +51,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const contentLength = Number(request.headers.get("content-length") ?? 0);
-  if (contentLength > MAX_WEBHOOK_BYTES) {
-    return NextResponse.json({ error: "Payload too large." }, { status: 413 });
-  }
-  const rawBody = await request.text();
-  if (rawBody.length > MAX_WEBHOOK_BYTES) {
+  const rawBody = await readBoundedText(request, MAX_WEBHOOK_BYTES);
+  if (rawBody === null) {
     return NextResponse.json({ error: "Payload too large." }, { status: 413 });
   }
 

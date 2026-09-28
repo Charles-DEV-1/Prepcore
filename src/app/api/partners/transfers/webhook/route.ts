@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
+import { readBoundedText } from "@/lib/api-security";
 import { createServiceRoleClient } from "@/services/supabase/admin";
 import { verifyFlutterwaveWebhookSignature } from "@/services/payments/flutterwave";
 
 // Configure this URL as a Flutterwave transfer webhook. It finalises a payout
 // only after Flutterwave has reported the bank-transfer outcome.
+const MAX_WEBHOOK_BYTES = 256 * 1024;
+
 export async function POST(request: Request) {
-  const raw = await request.text();
+  const raw = await readBoundedText(request, MAX_WEBHOOK_BYTES);
+  if (raw === null) return NextResponse.json({ error: "Payload too large" }, { status: 413 });
   if (!verifyFlutterwaveWebhookSignature(raw, request.headers)) return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   let payload: { data?: { id?: string | number; status?: string; complete_message?: string } };
   try {
