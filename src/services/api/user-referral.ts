@@ -10,15 +10,11 @@ import { createClient } from "@/services/supabase/client";
 import type { UserReferralReward } from "@/types/app";
 
 export type UserReferralStats = {
-  code: string;
+  code: string | null;
   totalSignups: number;
   totalConverted: number;
   rewards: UserReferralReward[];
   nextRewardAt: number;
-};
-
-type UserReferralSignupRow = {
-  converted_to_pro: boolean;
 };
 
 type UserReferralRewardRow = UserReferralReward;
@@ -27,7 +23,9 @@ export async function getUserReferralCodeForUser(): Promise<string> {
   const supabase = createClient();
   const { data, error } = await (
     supabase as unknown as {
-      rpc: (fn: string) => Promise<{ data: string | null; error: Error | null }>;
+      rpc: (
+        fn: string,
+      ) => Promise<{ data: string | null; error: Error | null }>;
     }
   ).rpc("ensure_user_referral_code");
 
@@ -59,37 +57,42 @@ export async function applyUserReferralFromStorage(): Promise<void> {
   clearUserReferralCode();
 }
 
-export async function getReferralStats(userId: string): Promise<UserReferralStats> {
+export async function getReferralStats(
+  userId: string,
+  canRefer: boolean,
+): Promise<UserReferralStats> {
   const supabase = createClient();
-  const code = await getUserReferralCodeForUser();
+  const code = canRefer ? await getUserReferralCodeForUser() : null;
 
-  const { data: signups, error: signupsError } = await supabase
-    .from("user_referral_signups" as never)
-    .select("converted_to_pro")
-    .eq("referrer_id", userId);
+  const [signupsResult, convertedResult, rewardsResult] = await Promise.all([
+    supabase
+      .from("user_referral_signups" as never)
+      .select("*", { count: "exact", head: true })
+      .eq("referrer_id", userId),
+    supabase
+      .from("user_referral_signups" as never)
+      .select("*", { count: "exact", head: true })
+      .eq("referrer_id", userId)
+      .eq("converted_to_pro", true),
+    supabase
+      .from("user_referral_rewards" as never)
+      .select("*")
+      .eq("user_id", userId)
+      .order("reward_batch", { ascending: true }),
+  ]);
 
-  if (signupsError) throw signupsError;
+  if (signupsResult.error) throw signupsResult.error;
+  if (convertedResult.error) throw convertedResult.error;
+  if (rewardsResult.error) throw rewardsResult.error;
 
-  const signupRows = (signups ?? []) as UserReferralSignupRow[];
-  const totalSignups = signupRows.length;
-  const totalConverted = signupRows.filter((row) => row.converted_to_pro).length;
-
-  const { data: rewards, error: rewardsError } = await supabase
-    .from("user_referral_rewards" as never)
-    .select("*")
-    .eq("user_id", userId)
-    .order("reward_batch", { ascending: true });
-
-  if (rewardsError) throw rewardsError;
-
-  const rewardRows = (rewards ?? []) as UserReferralRewardRow[];
-  const remainder = totalConverted % 5;
-  const nextRewardAt = remainder === 0 && totalConverted > 0 ? 5 : 5 - remainder;
+  const rewardRows = (rewardsResult.data ?? []) as UserReferralRewardRow[];
+  const remainder = (convertedResult.count ?? 0) % 5;
+  const nextRewardAt = 5 - remainder;
 
   return {
     code,
-    totalSignups,
-    totalConverted,
+    totalSignups: signupsResult.count ?? 0,
+    totalConverted: convertedResult.count ?? 0,
     rewards: rewardRows,
     nextRewardAt,
   };

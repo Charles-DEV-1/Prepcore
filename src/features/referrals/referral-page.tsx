@@ -2,8 +2,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
-  Check,
   Copy,
   Gift,
   Loader2,
@@ -42,6 +42,7 @@ import {
   type UserReferralStats,
 } from "@/services/api/user-referral";
 import { createClient } from "@/services/supabase/client";
+import { getEffectivePlan } from "@/services/api/plan";
 import type { UserReferralReward } from "@/types/app";
 import { siteConfig } from "@/config/site";
 import { PageSkeleton } from "@/components/layout/page-skeleton";
@@ -63,8 +64,7 @@ function buildTwitterUrl(link: string) {
 }
 
 function progressTowardNextReward(totalConverted: number) {
-  const remainder = totalConverted % 5;
-  return remainder === 0 && totalConverted > 0 ? 5 : remainder;
+  return totalConverted % 5;
 }
 
 function RewardStatus({ reward }: { reward: UserReferralReward }) {
@@ -77,21 +77,6 @@ function RewardStatus({ reward }: { reward: UserReferralReward }) {
       <div>
         <p className="font-semibold text-navy">Batch {reward.reward_batch}</p>
         <div className="mt-2 flex flex-wrap gap-2">
-          <Badge
-            className={
-              reward.pro_granted
-                ? "border-green-200 bg-green-50 text-green-700"
-                : "border-amber-200 bg-amber-50 text-amber-700"
-            }
-          >
-            {reward.pro_granted ? (
-              <>
-                <Check className="mr-1 h-3 w-3" /> Pro granted
-              </>
-            ) : (
-              "Pro pending"
-            )}
-          </Badge>
           <Badge
             className={
               reward.admin_paid
@@ -111,6 +96,7 @@ function RewardStatus({ reward }: { reward: UserReferralReward }) {
 
 export function ReferralPage() {
   const [stats, setStats] = useState<UserReferralStats | null>(null);
+  const [isPro, setIsPro] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -139,7 +125,10 @@ export function ReferralPage() {
           data: { user },
         } = await supabase.auth.getUser();
         if (!user) throw new Error("Please sign in to view referrals.");
-        setStats(await getReferralStats(user.id));
+        const plan = await getEffectivePlan();
+        const canRefer = plan.plan === "pro";
+        setIsPro(canRefer);
+        setStats(await getReferralStats(user.id, canRefer));
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to load referrals.",
@@ -189,7 +178,8 @@ export function ReferralPage() {
     );
   }
 
-  const referralLink = buildReferralLink(stats.code);
+  const referralLink = stats.code ? buildReferralLink(stats.code) : null;
+  const hasHistory = stats.totalSignups > 0 || stats.rewards.length > 0;
   const progressCount = progressTowardNextReward(stats.totalConverted);
   const progressValue = (progressCount / 5) * 100;
 
@@ -204,122 +194,151 @@ export function ReferralPage() {
           Invite friends, earn rewards
         </h1>
         <p className="max-w-2xl text-sm leading-6 text-slate-600">
-          Share your link. For every 5 friends who upgrade to Pro, you get one
-          free Pro month and ₦5,000 cash.
+          {isPro
+            ? "Share your link. Earn ₦5,000 for every 5 friends who join and upgrade to Pro."
+            : "Personal referrals are a Pro benefit. Upgrade to share your link and earn ₦5,000 for every 5 paid referrals."}
         </p>
       </div>
 
-      <Card className="border-border bg-white shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Share2 className="h-5 w-5 text-primary" />
-            Your referral link
-          </CardTitle>
-          <CardDescription>
-            Share this link so signups are tracked to your account.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="rounded-xl border border-border bg-softblue px-4 py-3 text-sm font-medium text-navy break-all">
-            {referralLink}
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => copyLink(referralLink)}
-            >
-              <Copy className="h-4 w-4" />
-              {copied ? "Copied!" : "Copy link"}
+      {!isPro && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-semibold text-navy">
+                Unlock personal referrals with Pro
+              </p>
+              {hasHistory && (
+                <p className="mt-1 text-sm text-slate-600">
+                  Your previous referral activity and earned cash rewards remain
+                  available below.
+                </p>
+              )}
+            </div>
+            <Button asChild>
+              <Link href="/upgrade">Upgrade to Pro</Link>
             </Button>
-            <Button asChild variant="outline">
-              <a
-                href={buildWhatsAppUrl(referralLink)}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <MessageCircle className="h-4 w-4" />
-                Share on WhatsApp
-              </a>
-            </Button>
-            <Button asChild variant="outline">
-              <a
-                href={buildTwitterUrl(referralLink)}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <Share2 className="h-4 w-4" />
-                Share on X
-              </a>
-            </Button>
-          </div>
-          <p className="text-xs text-slate-500">
-            Your code: <strong>{stats.code}</strong>
-          </p>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total signups</CardDescription>
-            <CardTitle className="flex items-center gap-2 text-3xl">
-              <Users className="h-6 w-6 text-primary" />
-              {stats.totalSignups}
+      {isPro && referralLink && (
+        <Card className="border-border bg-white shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Share2 className="h-5 w-5 text-primary" />
+              Your referral link
             </CardTitle>
+            <CardDescription>
+              Share this link so signups are tracked to your account.
+            </CardDescription>
           </CardHeader>
-          <CardContent className="text-sm text-slate-500">
-            People who joined with your link
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Converted to Pro</CardDescription>
-            <CardTitle className="text-3xl">{stats.totalConverted}</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-slate-500">
-            Friends who paid for premium
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Progress to next reward</CardTitle>
-          <CardDescription>
-            {progressCount}/5 paid referrals toward your next free Pro month +
-            ₦5,000
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Progress value={progressValue} />
-          <p className="text-sm text-slate-600">
-            You need {stats.nextRewardAt} more paid referral
-            {stats.nextRewardAt === 1 ? "" : "s"} to earn your next free Pro
-            month + ₦5,000.
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Your rewards</CardTitle>
-          <CardDescription>
-            Each batch unlocks after 5 paid referrals.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {stats.rewards.length === 0 ? (
-            <p className="text-sm text-slate-500">
-              No rewards yet. Keep sharing your link.
+          <CardContent className="space-y-4">
+            <div className="rounded-xl border border-border bg-softblue px-4 py-3 text-sm font-medium text-navy break-all">
+              {referralLink}
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => copyLink(referralLink)}
+              >
+                <Copy className="h-4 w-4" />
+                {copied ? "Copied!" : "Copy link"}
+              </Button>
+              <Button asChild variant="outline">
+                <a
+                  href={buildWhatsAppUrl(referralLink)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Share on WhatsApp
+                </a>
+              </Button>
+              <Button asChild variant="outline">
+                <a
+                  href={buildTwitterUrl(referralLink)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Share2 className="h-4 w-4" />
+                  Share on X
+                </a>
+              </Button>
+            </div>
+            <p className="text-xs text-slate-500">
+              Your code: <strong>{stats.code}</strong>
             </p>
-          ) : (
-            stats.rewards.map((reward) => (
-              <div key={reward.id} className="space-y-3">
-                <RewardStatus reward={reward} />
-                {!reward.cash_claimed &&
-                  !reward.admin_paid &&
-                  reward.pro_granted && (
+          </CardContent>
+        </Card>
+      )}
+
+      {(isPro || hasHistory) && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Total signups</CardDescription>
+              <CardTitle className="flex items-center gap-2 text-3xl">
+                <Users className="h-6 w-6 text-primary" />
+                {stats.totalSignups}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-slate-500">
+              People who joined with your link
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Converted to Pro</CardDescription>
+              <CardTitle className="text-3xl">{stats.totalConverted}</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-slate-500">
+              Friends who paid for premium
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {isPro && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Progress to next reward</CardTitle>
+            <CardDescription>
+              {progressCount}/5 paid referrals toward your next ₦5,000 cash
+              reward
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Progress value={progressValue} />
+            <p className="text-sm text-slate-600">
+              You need {stats.nextRewardAt} more paid referral
+              {stats.nextRewardAt === 1 ? "" : "s"} to earn your next ₦5,000.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {(isPro || hasHistory) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Your rewards</CardTitle>
+            <CardDescription>
+              Each batch unlocks after 5 paid referrals.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {stats.rewards.length === 0 ? (
+              <p className="text-sm text-slate-500">
+                No rewards yet.{" "}
+                {isPro
+                  ? "Keep sharing your link."
+                  : "Previously referred friends may still upgrade to Pro."}
+              </p>
+            ) : (
+              stats.rewards.map((reward) => (
+                <div key={reward.id} className="space-y-3">
+                  <RewardStatus reward={reward} />
+                  {!reward.cash_claimed && !reward.admin_paid && (
                     <Button
                       type="button"
                       className="w-full sm:w-auto"
@@ -332,11 +351,12 @@ export function ReferralPage() {
                       Claim ₦5,000
                     </Button>
                   )}
-              </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Dialog
         open={claimReward !== null}

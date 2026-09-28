@@ -39,7 +39,7 @@ export async function processCashRewardClaim(
   }
 
   const now = new Date().toISOString();
-  const { error: updateError } = await admin
+  const { data: claimed, error: updateError } = await admin
     .from("user_referral_rewards" as never)
     .update({
       cash_claimed: true,
@@ -49,18 +49,30 @@ export async function processCashRewardClaim(
       account_name: input.accountName,
     } as never)
     .eq("id", input.rewardId)
-    .eq("user_id", input.userId);
+    .eq("user_id", input.userId)
+    .eq("cash_claimed", false)
+    .eq("admin_paid", false)
+    .select("id")
+    .maybeSingle();
 
   if (updateError) throw updateError;
+  if (!claimed) throw new Error("This reward has already been claimed.");
 
-  await sendReferralCashClaimEmail({
-    name: input.userName,
-    email: input.userEmail,
-    rewardBatch: row.reward_batch,
-    bankName: input.bankName,
-    accountNumber: input.accountNumber,
-    accountName: input.accountName,
-  });
+  try {
+    await sendReferralCashClaimEmail({
+      name: input.userName,
+      email: input.userEmail,
+      rewardBatch: row.reward_batch,
+      bankName: input.bankName,
+      accountNumber: input.accountNumber,
+      accountName: input.accountName,
+    });
+  } catch {
+    // The claim is already saved and visible to admins. Do not invite a
+    // duplicate request just because email delivery is temporarily down.
+    console.error("referral_claim_email_failed");
+    return;
+  }
 
   await admin
     .from("user_referral_rewards" as never)

@@ -10,6 +10,10 @@ import {
   XCircle,
   Download,
   MessageCircle,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react";
 import { ReportQuestion } from "@/components/ui/report-question";
 import { Button } from "@/components/ui/button";
@@ -18,7 +22,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { createClient } from "@/services/supabase/client";
 import { cn } from "@/lib/utils";
-import { AnimatedNumber, ScoreRing, Stagger, StaggerItem } from "@/components/ui/motion";
+import {
+  AnimatedNumber,
+  ScoreRing,
+  Stagger,
+  StaggerItem,
+} from "@/components/ui/motion";
 import type { ExamType } from "@/types/app";
 
 type Answer = {
@@ -54,6 +63,9 @@ type SubjectStat = {
   total: number;
   percent: number;
 };
+
+const REVIEWS_PER_PAGE = 5;
+const VISIBLE_PAGE_BUTTONS = 5;
 
 // ── Scorecard component (what gets captured as image) ──────
 function ScoreCard({
@@ -277,19 +289,21 @@ function ScoreCard({
 export function ResultsPage({ id }: { id: string }) {
   const supabase = useMemo(() => createClient(), []);
   const cardRef = useRef<HTMLDivElement>(null);
+  const reviewTopRef = useRef<HTMLDivElement>(null);
 
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [score, setScore] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(0);
   const [subjectStats, setSubjectStats] = useState<SubjectStat[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAll, setShowAll] = useState(false);
+  const [reviewPage, setReviewPage] = useState(1);
   const [downloading, setDownloading] = useState(false);
   const [userName, setUserName] = useState("Student");
   const [examType, setExamType] = useState<ExamType>("jamb");
 
   const loadResults = useCallback(async () => {
     setLoading(true);
+    setReviewPage(1);
 
     // Get user name
     const {
@@ -331,7 +345,9 @@ export function ResultsPage({ id }: { id: string }) {
         )
       `,
       )
-      .eq("session_id", id);
+      .eq("session_id", id)
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true });
 
     if (answerData) {
       const rows = answerData as unknown as AnswerWithSubject[];
@@ -395,7 +411,40 @@ export function ResultsPage({ id }: { id: string }) {
 
   const wrongAnswers = answers.filter((a) => !a.is_correct);
   const correctCount = answers.filter((a) => a.is_correct).length;
-  const displayedWrong = showAll ? wrongAnswers : wrongAnswers.slice(0, 5);
+  const reviewPageCount = Math.max(
+    1,
+    Math.ceil(wrongAnswers.length / REVIEWS_PER_PAGE),
+  );
+  const currentReviewPage = Math.min(reviewPage, reviewPageCount);
+  const firstReviewIndex = (currentReviewPage - 1) * REVIEWS_PER_PAGE;
+  const displayedWrong = wrongAnswers.slice(
+    firstReviewIndex,
+    firstReviewIndex + REVIEWS_PER_PAGE,
+  );
+  const firstVisiblePage = Math.max(
+    1,
+    Math.min(
+      currentReviewPage - Math.floor(VISIBLE_PAGE_BUTTONS / 2),
+      reviewPageCount - VISIBLE_PAGE_BUTTONS + 1,
+    ),
+  );
+  const visiblePages = Array.from(
+    { length: Math.min(VISIBLE_PAGE_BUTTONS, reviewPageCount) },
+    (_, index) => firstVisiblePage + index,
+  );
+
+  function goToReviewPage(page: number) {
+    const nextPage = Math.max(1, Math.min(page, reviewPageCount));
+    if (nextPage === currentReviewPage) return;
+    setReviewPage(nextPage);
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    reviewTopRef.current?.scrollIntoView({
+      behavior: reduceMotion ? "auto" : "smooth",
+      block: "start",
+    });
+  }
 
   const scoreColor =
     score >= 60
@@ -438,26 +487,30 @@ export function ResultsPage({ id }: { id: string }) {
           <div className="flex items-center gap-5">
             <ScoreRing value={score} className="hidden sm:grid" />
             <div>
-            <p className="text-sm font-medium text-slate-500">Your score</p>
-            <h1 className="sr-only">Your score: {score}%</h1>
-            <h1
-              className={cn(
-                "mt-1 text-7xl font-bold tracking-tight sm:hidden",
-                scoreColor,
-              )}
-            >
-              <AnimatedNumber value={score} suffix="%" className="sm:hidden" />
-            </h1>
-            <p className="mt-2 text-base font-medium text-slate-600">
-              {correctCount} correct out of {totalQuestions} questions
-            </p>
-            <p className="mt-1 text-sm text-slate-500">
-              {score >= 60
-                ? "Great performance! Keep practising to improve further."
-                : score >= 40
-                  ? "Good effort. Focus on your weak subjects to improve."
-                  : "Keep going - consistent practice will raise your score."}
-            </p>
+              <p className="text-sm font-medium text-slate-500">Your score</p>
+              <h1 className="sr-only">Your score: {score}%</h1>
+              <h1
+                className={cn(
+                  "mt-1 text-7xl font-bold tracking-tight sm:hidden",
+                  scoreColor,
+                )}
+              >
+                <AnimatedNumber
+                  value={score}
+                  suffix="%"
+                  className="sm:hidden"
+                />
+              </h1>
+              <p className="mt-2 text-base font-medium text-slate-600">
+                {correctCount} correct out of {totalQuestions} questions
+              </p>
+              <p className="mt-1 text-sm text-slate-500">
+                {score >= 60
+                  ? "Great performance! Keep practising to improve further."
+                  : score >= 40
+                    ? "Good effort. Focus on your weak subjects to improve."
+                    : "Keep going - consistent practice will raise your score."}
+              </p>
             </div>
           </div>
 
@@ -631,27 +684,29 @@ export function ResultsPage({ id }: { id: string }) {
       {/* Subject breakdown */}
       <Stagger className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" delay={0.1}>
         {subjectStats.map((stat) => (
-          <StaggerItem key={stat.label}><Card className="border-border bg-white shadow-sm transition-transform duration-200 hover:-translate-y-0.5">
-            <CardContent className="p-5">
-              <p className="font-semibold text-navy">{stat.label}</p>
-              <p
-                className={cn(
-                  "mt-2 text-2xl font-bold",
-                  stat.percent >= 60
-                    ? "text-green-600"
-                    : stat.percent >= 40
-                      ? "text-amber-500"
-                      : "text-red-500",
-                )}
-              >
-                {stat.percent}%
-              </p>
-              <p className="text-xs text-slate-500 mb-3">
-                {stat.correct} / {stat.total} correct
-              </p>
-              <Progress value={stat.percent} />
-            </CardContent>
-          </Card></StaggerItem>
+          <StaggerItem key={stat.label}>
+            <Card className="border-border bg-white shadow-sm transition-transform duration-200 hover:-translate-y-0.5">
+              <CardContent className="p-5">
+                <p className="font-semibold text-navy">{stat.label}</p>
+                <p
+                  className={cn(
+                    "mt-2 text-2xl font-bold",
+                    stat.percent >= 60
+                      ? "text-green-600"
+                      : stat.percent >= 40
+                        ? "text-amber-500"
+                        : "text-red-500",
+                  )}
+                >
+                  {stat.percent}%
+                </p>
+                <p className="text-xs text-slate-500 mb-3">
+                  {stat.correct} / {stat.total} correct
+                </p>
+                <Progress value={stat.percent} />
+              </CardContent>
+            </Card>
+          </StaggerItem>
         ))}
       </Stagger>
 
@@ -684,6 +739,7 @@ export function ResultsPage({ id }: { id: string }) {
         </Card>
 
         <Card className="border-border bg-white shadow-sm">
+          <div ref={reviewTopRef} className="scroll-mt-24" />
           <CardHeader>
             <CardTitle>
               Wrong answers review
@@ -745,16 +801,82 @@ export function ResultsPage({ id }: { id: string }) {
                     <ReportQuestion questionId={answer.question?.id ?? ""} />
                   </div>
                 ))}
-                {wrongAnswers.length > 5 && (
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => setShowAll(!showAll)}
+                {reviewPageCount > 1 && (
+                  <nav
+                    aria-label="Wrong answer review pages"
+                    className="space-y-3 border-t border-border pt-4"
                   >
-                    {showAll
-                      ? "Show less"
-                      : `Show all ${wrongAnswers.length} wrong answers`}
-                  </Button>
+                    <p
+                      className="text-center text-xs text-slate-500"
+                      aria-live="polite"
+                    >
+                      Showing {firstReviewIndex + 1}–
+                      {Math.min(
+                        firstReviewIndex + REVIEWS_PER_PAGE,
+                        wrongAnswers.length,
+                      )}{" "}
+                      of {wrongAnswers.length} wrong answers
+                    </p>
+                    <div className="flex flex-wrap items-center justify-center gap-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        aria-label="First review page"
+                        disabled={currentReviewPage === 1}
+                        onClick={() => goToReviewPage(1)}
+                      >
+                        <ChevronsLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        aria-label="Previous review page"
+                        disabled={currentReviewPage === 1}
+                        onClick={() => goToReviewPage(currentReviewPage - 1)}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      {visiblePages.map((page) => (
+                        <Button
+                          key={page}
+                          type="button"
+                          size="sm"
+                          variant={
+                            page === currentReviewPage ? "default" : "outline"
+                          }
+                          aria-label={`Review page ${page}`}
+                          aria-current={
+                            page === currentReviewPage ? "page" : undefined
+                          }
+                          onClick={() => goToReviewPage(page)}
+                        >
+                          {page}
+                        </Button>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        aria-label="Next review page"
+                        disabled={currentReviewPage === reviewPageCount}
+                        onClick={() => goToReviewPage(currentReviewPage + 1)}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        aria-label="Last review page"
+                        disabled={currentReviewPage === reviewPageCount}
+                        onClick={() => goToReviewPage(reviewPageCount)}
+                      >
+                        <ChevronsRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </nav>
                 )}
               </>
             )}

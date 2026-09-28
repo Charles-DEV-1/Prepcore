@@ -46,6 +46,7 @@ const WAEC_DURATION = 3600;
 const JAMB_ENGLISH_QUESTIONS = 60;
 const JAMB_OTHER_SUBJECT_QUESTIONS = 40;
 const WAEC_TOTAL_QUESTIONS = 50;
+const MIN_ANSWERS_FOR_MANUAL_SUBMIT = 2;
 
 type Question = QuestionForSession & {
   subject_label: string;
@@ -108,64 +109,77 @@ export function ExamPage() {
       ? `WAEC Mock${selectedWaecSubject ? ` - ${selectedWaecSubject.name}` : ""}`
       : "JAMB Mock Exam";
 
-  const handleSubmit = useCallback(async () => {
-    setPhase("submitting");
-    setSubmitOpen(false);
+  const handleSubmit = useCallback(
+    async (autoSubmit = false) => {
+      if (
+        !autoSubmit &&
+        questions.filter((item) => selectedAnswers[item.id]).length <
+          MIN_ANSWERS_FOR_MANUAL_SUBMIT
+      ) {
+        setSubmitOpen(false);
+        return;
+      }
+      setPhase("submitting");
+      setSubmitOpen(false);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      router.push("/login");
-      return;
-    }
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        router.push("/login");
+        return;
+      }
 
-    // Calculate score
-    let correct = 0;
-    questions.forEach((q) => {
-      if (selectedAnswers[q.id] === q.correct_answer) correct++;
-    });
+      // Calculate score
+      let correct = 0;
+      questions.forEach((q) => {
+        if (selectedAnswers[q.id] === q.correct_answer) correct++;
+      });
 
-    const scorePercent =
-      questions.length > 0 ? Math.round((correct / questions.length) * 100) : 0;
+      const scorePercent =
+        questions.length > 0
+          ? Math.round((correct / questions.length) * 100)
+          : 0;
 
-    // Save session
-    const { data: session, error: sessionError } = await supabase
-      .from("sessions")
-      .insert({
-        user_id: user.id,
-        mode: "mock",
-        score: scorePercent,
-        total_questions: questions.length,
+      // Save session
+      const { data: session, error: sessionError } = await supabase
+        .from("sessions")
+        .insert({
+          user_id: user.id,
+          mode: "mock",
+          score: scorePercent,
+          total_questions: questions.length,
+          exam_type: selectedExamType,
+          completed_at: new Date().toISOString(),
+        } as never)
+        .select("id")
+        .single();
+
+      if (sessionError || !session) {
+        router.push("/dashboard");
+        return;
+      }
+
+      const sessionId = (session as { id: string }).id;
+      if (user) {
+        await incrementMockExamUsage(supabase, user.id);
+      }
+      // Save all answers
+      const answerRows = questions.map((q) => ({
+        session_id: sessionId,
+        question_id: q.id,
+        selected_answer: selectedAnswers[q.id] ?? null,
+        is_correct: selectedAnswers[q.id] === q.correct_answer,
         exam_type: selectedExamType,
-        completed_at: new Date().toISOString(),
-      } as never)
-      .select("id")
-      .single();
+      }));
+      await awardPoints(supabase, user.id, "mock", scorePercent);
+      await supabase.from("answers").insert(answerRows as never);
+      await updateStreak(supabase, user.id);
 
-    if (sessionError || !session) {
-      router.push("/dashboard");
-      return;
-    }
-
-    const sessionId = (session as { id: string }).id;
-    if (user) {
-      await incrementMockExamUsage(supabase, user.id);
-    }
-    // Save all answers
-    const answerRows = questions.map((q) => ({
-      session_id: sessionId,
-      question_id: q.id,
-      selected_answer: selectedAnswers[q.id] ?? null,
-      is_correct: selectedAnswers[q.id] === q.correct_answer,
-      exam_type: selectedExamType,
-    }));
-    await awardPoints(supabase, user.id, "mock", scorePercent);
-    await supabase.from("answers").insert(answerRows as never);
-    await updateStreak(supabase, user.id);
-
-    router.push(`/results/${sessionId}`);
-  }, [questions, selectedAnswers, selectedExamType, supabase, router]);
+      router.push(`/results/${sessionId}`);
+    },
+    [questions, selectedAnswers, selectedExamType, supabase, router],
+  );
 
   const [subjectsLoading, setSubjectsLoading] = useState(true);
 
@@ -193,7 +207,7 @@ export function ExamPage() {
   useEffect(() => {
     if (phase !== "exam") return;
     if (seconds <= 0) {
-      void handleSubmit();
+      void handleSubmit(true);
       return;
     }
     const id = setInterval(() => setSeconds((s) => s - 1), 1000);
@@ -688,10 +702,24 @@ export function ExamPage() {
 
           <Dialog open={submitOpen} onOpenChange={setSubmitOpen}>
             <DialogTrigger asChild>
-              <Button className="mt-6 w-full" variant="destructive">
+              <Button
+                className="mt-6 w-full"
+                variant="destructive"
+                disabled={answeredCount < MIN_ANSWERS_FOR_MANUAL_SUBMIT}
+              >
                 Submit exam
               </Button>
             </DialogTrigger>
+            {answeredCount < MIN_ANSWERS_FOR_MANUAL_SUBMIT && (
+              <p
+                className="mt-2 text-center text-xs text-slate-500"
+                role="status"
+              >
+                Answer at least {MIN_ANSWERS_FOR_MANUAL_SUBMIT} questions to
+                submit early ({answeredCount}/{MIN_ANSWERS_FOR_MANUAL_SUBMIT}{" "}
+                answered). The exam still submits when time runs out.
+              </p>
+            )}
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Submit exam?</DialogTitle>

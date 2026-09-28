@@ -25,6 +25,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   expired: "This referral code has expired.",
   max_uses_reached: "This referral code has reached its usage limit.",
   not_authenticated: "Please sign in to apply a referral code.",
+  referrer_not_pro:
+    "This personal referral link is no longer active because its owner does not have Pro.",
 };
 
 export function referralErrorMessage(error?: string): string {
