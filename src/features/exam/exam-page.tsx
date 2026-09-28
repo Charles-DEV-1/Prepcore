@@ -64,9 +64,13 @@ export function ExamPage() {
   const [supabase] = useState(() => createClient());
   const { isPro, isLoading: planLoading } = useUserPlan();
   const [phase, setPhase] = useState<ExamPhase>("setup");
-  const [questionGroups, setQuestionGroups] = useState<SubjectQuestionGroup[]>([]);
+  const [questionGroups, setQuestionGroups] = useState<SubjectQuestionGroup[]>(
+    [],
+  );
   const [activeSubjectId, setActiveSubjectId] = useState("");
-  const [activeQuestionIndexes, setActiveQuestionIndexes] = useState<Record<string, number>>({});
+  const [activeQuestionIndexes, setActiveQuestionIndexes] = useState<
+    Record<string, number>
+  >({});
   const [loading, setLoading] = useState(false);
   const [examLoadError, setExamLoadError] = useState<string | null>(null);
   const [seconds, setSeconds] = useState(JAMB_DURATION);
@@ -78,6 +82,9 @@ export function ExamPage() {
     string[]
   >([]);
   const [selectedWaecSubjectId, setSelectedWaecSubjectId] = useState("");
+  const [selectedWaecSource, setSelectedWaecSource] = useState<
+    "all" | "original"
+  >("all");
 
   const {
     flaggedQuestionIds,
@@ -88,7 +95,9 @@ export function ExamPage() {
   } = useAppStore();
 
   const questions = questionGroups.flatMap((group) => group.questions);
-  const activeGroup = questionGroups.find((group) => group.subjectId === activeSubjectId);
+  const activeGroup = questionGroups.find(
+    (group) => group.subjectId === activeSubjectId,
+  );
   const activeQuestionIndex = activeQuestionIndexes[activeSubjectId] ?? 0;
   const question = activeGroup?.questions[activeQuestionIndex];
   const selectedWaecSubject = waecSubjects.find(
@@ -167,8 +176,6 @@ export function ExamPage() {
         getSubjectsByExamType(supabase, "jamb"),
         getSubjectsByExamType(supabase, "waec"),
       ]);
-      console.log("JAMB subjects:", nextJambSubjects);
-      console.log("WAEC subjects:", nextWaecSubjects);
       setJambSubjects(nextJambSubjects);
       setWaecSubjects(nextWaecSubjects);
       setSelectedWaecSubjectId(nextWaecSubjects[0]?.id ?? "");
@@ -205,17 +212,30 @@ export function ExamPage() {
       <Card className="mx-auto max-w-xl text-center">
         <CardContent className="space-y-4 p-8">
           <Sparkles className="mx-auto h-8 w-8 text-primary" />
-          <h1 className="text-2xl font-bold text-navy">Mock exams are a Pro feature</h1>
+          <h1 className="text-2xl font-bold text-navy">
+            Mock exams are a Pro feature
+          </h1>
           <p className="text-sm leading-6 text-slate-600">
-            Unlock full JAMB and WAEC mock exams, subject switching, timers, question maps, and detailed results with Prepcore Pro.
+            Unlock full JAMB and WAEC mock exams, subject switching, timers,
+            question maps, and detailed results with Prepcore Pro.
           </p>
-          <Button asChild><NextLink href="/upgrade">View Pro features</NextLink></Button>
+          <Button asChild>
+            <NextLink href="/upgrade">View Pro features</NextLink>
+          </Button>
         </CardContent>
       </Card>
     );
   }
 
   async function startExam() {
+    if (planLoading || !isPro) {
+      setExamLoadError("Mock exams require an active Pro plan.");
+      return;
+    }
+    if (selectedExamType === "waec" && !selectedWaecSubjectId) {
+      setExamLoadError("Choose a WAEC subject before starting.");
+      return;
+    }
     setLoading(true);
     setExamLoadError(null);
     resetExam();
@@ -240,15 +260,26 @@ export function ExamPage() {
     try {
       const nextQuestionGroups = await Promise.all(
         selectedSubjects.map(async (subject) => {
-        const picked = await getSessionQuestions(
-          subject.id,
-          selectedExamType === "waec"
-            ? WAEC_TOTAL_QUESTIONS
-            : subject.label.toLowerCase().includes("english")
-              ? JAMB_ENGLISH_QUESTIONS
-              : JAMB_OTHER_SUBJECT_QUESTIONS,
-          selectedExamType,
-        );
+          const picked = await getSessionQuestions(
+            subject.id,
+            selectedExamType === "waec"
+              ? WAEC_TOTAL_QUESTIONS
+              : subject.label.toLowerCase().includes("english")
+                ? JAMB_ENGLISH_QUESTIONS
+                : JAMB_OTHER_SUBJECT_QUESTIONS,
+            selectedExamType,
+            selectedExamType === "waec" && selectedWaecSource === "original"
+              ? "original"
+              : undefined,
+          );
+          if (
+            selectedExamType === "waec" &&
+            picked.length < WAEC_TOTAL_QUESTIONS
+          ) {
+            throw new Error(
+              `This WAEC question set has only ${picked.length} of the 50 questions needed for a mock exam. Try another subject or question set.`,
+            );
+          }
           return {
             subjectId: subject.id,
             subjectLabel: subject.label,
@@ -263,7 +294,9 @@ export function ExamPage() {
       setQuestionGroups(nextQuestionGroups);
       setActiveSubjectId(firstSubjectId);
       setActiveQuestionIndexes(
-        Object.fromEntries(nextQuestionGroups.map((group) => [group.subjectId, 0])),
+        Object.fromEntries(
+          nextQuestionGroups.map((group) => [group.subjectId, 0]),
+        ),
       );
       setSeconds(selectedExamType === "waec" ? WAEC_DURATION : JAMB_DURATION);
       setPhase("exam");
@@ -279,16 +312,22 @@ export function ExamPage() {
     }
   }
 
-  const answeredCount = questions.filter((item) => selectedAnswers[item.id]).length;
+  const answeredCount = questions.filter(
+    (item) => selectedAnswers[item.id],
+  ).length;
   const unansweredCount = questions.length - answeredCount;
   const activeAnsweredCount = (activeGroup?.questions ?? []).filter(
     (item) => selectedAnswers[item.id],
   ).length;
-  const activeUnansweredCount = (activeGroup?.questions.length ?? 0) - activeAnsweredCount;
+  const activeUnansweredCount =
+    (activeGroup?.questions.length ?? 0) - activeAnsweredCount;
 
   function setSubjectQuestionIndex(index: number) {
     if (!activeSubjectId) return;
-    setActiveQuestionIndexes((current) => ({ ...current, [activeSubjectId]: index }));
+    setActiveQuestionIndexes((current) => ({
+      ...current,
+      [activeSubjectId]: index,
+    }));
   }
 
   // ── SETUP SCREEN ──────────────────────────────────────────
@@ -325,22 +364,22 @@ export function ExamPage() {
             </div>
             <div className="rounded-2xl border border-border bg-[#F8FAFC] p-5 space-y-3 dark:border-border-card dark:bg-card-surface">
               <div className="flex justify-between text-sm">
-                  <span className="text-slate-500 dark:text-sub">Questions</span>
-                  <span className="font-semibold text-navy dark:text-main">
+                <span className="text-slate-500 dark:text-sub">Questions</span>
+                <span className="font-semibold text-navy dark:text-main">
                   {selectedExamType === "jamb"
                     ? "180 questions"
                     : "50 questions"}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                  <span className="text-slate-500 dark:text-sub">Duration</span>
-                  <span className="font-semibold text-navy dark:text-main">
+                <span className="text-slate-500 dark:text-sub">Duration</span>
+                <span className="font-semibold text-navy dark:text-main">
                   {selectedExamType === "jamb" ? "2 hours" : "1 hour"}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                  <span className="text-slate-500 dark:text-sub">Subjects</span>
-                  <span className="font-semibold text-navy dark:text-main">
+                <span className="text-slate-500 dark:text-sub">Subjects</span>
+                <span className="font-semibold text-navy dark:text-main">
                   {selectedExamType === "jamb"
                     ? "English locked + 3 subjects"
                     : (selectedWaecSubject?.name ?? "Choose one subject")}
@@ -409,6 +448,27 @@ export function ExamPage() {
                     </option>
                   ))}
                 </select>
+                <label
+                  className="block pt-2 text-sm font-semibold text-navy"
+                  htmlFor="mock-question-source"
+                >
+                  Question set
+                </label>
+                <select
+                  id="mock-question-source"
+                  className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm dark:border-border-card dark:bg-card-surface dark:text-main"
+                  value={selectedWaecSource}
+                  onChange={(event) =>
+                    setSelectedWaecSource(
+                      event.target.value as "all" | "original",
+                    )
+                  }
+                >
+                  <option value="all">All available questions</option>
+                  <option value="original">
+                    Original syllabus questions only
+                  </option>
+                </select>
               </div>
             )}
 
@@ -428,7 +488,7 @@ export function ExamPage() {
               className="w-full"
               size="lg"
               onClick={startExam}
-              disabled={loading}
+              disabled={loading || planLoading || !isPro}
             >
               {loading ? "Loading questions..." : "Start Exam →"}
             </Button>
@@ -462,7 +522,8 @@ export function ExamPage() {
           <div>
             <CardTitle>{examTitle}</CardTitle>
             <p className="text-sm text-slate-500 mt-1">
-              {activeGroup?.subjectLabel ?? "Subject"}: {activeQuestionIndex + 1} of {activeGroup?.questions.length ?? 0}
+              {activeGroup?.subjectLabel ?? "Subject"}:{" "}
+              {activeQuestionIndex + 1} of {activeGroup?.questions.length ?? 0}
             </p>
           </div>
           <div
@@ -481,11 +542,24 @@ export function ExamPage() {
         </CardHeader>
 
         <CardContent className="p-6 pt-0">
-          <div className="mb-6 flex gap-2 overflow-x-auto pb-1" aria-label="Exam subjects">
+          <div
+            className="mb-6 flex gap-2 overflow-x-auto pb-1"
+            aria-label="Exam subjects"
+          >
             {questionGroups.map((group) => {
-              const groupAnswered = group.questions.filter((item) => selectedAnswers[item.id]).length;
+              const groupAnswered = group.questions.filter(
+                (item) => selectedAnswers[item.id],
+              ).length;
               return (
-                <Button key={group.subjectId} size="sm" variant={activeSubjectId === group.subjectId ? "default" : "outline"} className="shrink-0" onClick={() => setActiveSubjectId(group.subjectId)}>
+                <Button
+                  key={group.subjectId}
+                  size="sm"
+                  variant={
+                    activeSubjectId === group.subjectId ? "default" : "outline"
+                  }
+                  className="shrink-0"
+                  onClick={() => setActiveSubjectId(group.subjectId)}
+                >
                   {group.subjectLabel} {groupAnswered}/{group.questions.length}
                 </Button>
               );
@@ -549,7 +623,10 @@ export function ExamPage() {
                     Previous
                   </Button>
                   <Button
-                    disabled={activeQuestionIndex === (activeGroup?.questions.length ?? 1) - 1}
+                    disabled={
+                      activeQuestionIndex ===
+                      (activeGroup?.questions.length ?? 1) - 1
+                    }
                     onClick={() =>
                       setSubjectQuestionIndex(activeQuestionIndex + 1)
                     }
@@ -568,7 +645,8 @@ export function ExamPage() {
         <CardHeader>
           <CardTitle className="text-base">Question map</CardTitle>
           <p className="text-xs text-slate-500">
-            {activeAnsweredCount} answered · {activeUnansweredCount} skipped in {activeGroup?.subjectLabel ?? "this subject"}
+            {activeAnsweredCount} answered · {activeUnansweredCount} skipped in{" "}
+            {activeGroup?.subjectLabel ?? "this subject"}
           </p>
         </CardHeader>
         <CardContent>

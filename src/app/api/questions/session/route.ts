@@ -9,12 +9,14 @@ import {
 } from "@/lib/api-security";
 
 const MAX_SESSION_QUESTIONS = 180;
+const SESSION_POOL_SIZE = 200;
 
 type SessionRequest = {
   subjectId?: string;
   examType?: "jamb" | "waec";
   limit?: number;
   year?: number;
+  source?: "original";
 };
 
 type StoredQuestion = {
@@ -44,7 +46,12 @@ function isRenderableQuestion(question: StoredQuestion): boolean {
 }
 
 function shuffle<T>(items: T[]) {
-  return [...items].sort(() => Math.random() - 0.5);
+  const shuffled = [...items];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  return shuffled;
 }
 
 /**
@@ -84,7 +91,6 @@ function randomizeOptionOrder(question: StoredQuestion): StoredQuestion {
       correctIndex >= 0 ? displayKeys[correctIndex] : question.correct_answer,
   };
 }
-
 
 async function isProUser(userId: string) {
   const supabase = createServiceRoleClient();
@@ -133,7 +139,9 @@ export async function POST(request: Request) {
       error instanceof Error ? error.name : String(error),
     );
     return noStoreJson(
-      { error: "Question service is temporarily unavailable. Please try again." },
+      {
+        error: "Question service is temporarily unavailable. Please try again.",
+      },
       { status: 500 },
     );
   }
@@ -166,39 +174,59 @@ async function handlePost(request: Request) {
   const examType = body?.examType;
   const requestedYear = body?.year;
   const year = Number.isInteger(requestedYear) ? requestedYear : undefined;
+  const source = body?.source;
   const limit = Math.min(
     Math.max(Number(body?.limit) || 25, 1),
     MAX_SESSION_QUESTIONS,
   );
-  if (!subjectId || (examType !== "jamb" && examType !== "waec")) {
+  if (
+    !subjectId ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      subjectId,
+    ) ||
+    (examType !== "jamb" && examType !== "waec") ||
+    (source !== undefined && source !== "original") ||
+    (requestedYear !== undefined &&
+      (year === undefined || year < 1900 || year > 2100)) ||
+    (source === "original" && year !== undefined)
+  ) {
     return noStoreJson({ error: "Invalid question request" }, { status: 400 });
   }
 
   const admin = createServiceRoleClient();
-  const { data: subject } = await admin
+  const { data: subject, error: subjectError } = await admin
     .from("subjects")
-    .select("id, name")
+    .select("id, name, exam_type")
     .eq("id", subjectId)
     .maybeSingle();
+  if (subjectError)
+    return noStoreJson({ error: "Could not load subject" }, { status: 500 });
   if (!subject)
     return noStoreJson({ error: "Unknown subject" }, { status: 404 });
+  if (String(subject.exam_type).toLowerCase() !== examType)
+    return noStoreJson(
+      { error: "Subject does not match exam type" },
+      { status: 400 },
+    );
 
   const isPro = await isProUser(user.id);
 
-  // Imported provider questions are a Pro entitlement. Preserve the existing
-  // free-plan behavior by reading only the local Supabase question bank.
+  // Provider-imported questions remain a Pro entitlement. Original questions
+  // are available to all authenticated learners alongside the local bank.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const baseQuery = (admin.from("questions") as any)
     .select(
       "id, prompt, options, correct_answer, explanation, topic, year, subject_id, exam_type",
     )
     .eq("subject_id", subjectId)
-    .eq("exam_type", examType);
-  if (year) baseQuery.eq("year", year);
-  if (!isPro) baseQuery.eq("source", "supabase");
+    .eq("exam_type", subject.exam_type)
+    .order("created_at", { ascending: false });
+  if (year !== undefined) baseQuery.eq("year", year);
+  if (source === "original") baseQuery.eq("source", "original");
+  else if (!isPro) baseQuery.in("source", ["supabase", "original"]);
 
   if (!isPro) {
-    const { data, error } = await baseQuery.limit(Math.max(limit * 4, limit));
+    const { data, error } = await baseQuery.limit(Math.max(limit * 4, SESSION_POOL_SIZE));
     if (error)
       return noStoreJson(
         { error: "Could not load questions" },
@@ -207,7 +235,9 @@ async function handlePost(request: Request) {
     return noStoreJson({
       questions: shuffle((data ?? []) as StoredQuestion[])
         .filter(isRenderableQuestion)
-        .map(randomizeOptionOrder)
+        .map((question) =>
+          randomizeOptionOrder({ ...question, exam_type: examType }),
+        )
         .slice(0, limit),
       isPro,
     });
@@ -215,24 +245,29 @@ async function handlePost(request: Request) {
 
   // Refill only an underfilled subject. This writes a validated WAEC/JAMB page
   // to Supabase, then the query below serves the combined database bank.
-  const { count: cachedCount, error: cachedCountError } = await admin
-    .from("questions")
-    .select("id", { count: "exact", head: true })
-    .eq("subject_id", subjectId)
-    .eq("exam_type", examType);
-  if (cachedCountError) {
-    return noStoreJson({ error: "Could not load questions" }, { status: 500 });
-  }
-  if ((cachedCount ?? 0) < limit) {
-    try {
-      await refillQuestionCacheForSubject(examType, subjectId);
-    } catch (error) {
-      // Existing cached rows remain usable when the provider is unavailable.
-      console.warn("question_cache_refill_failed", {
-        subjectId,
-        examType,
-        error: error instanceof Error ? error.message : String(error),
-      });
+  if (source !== "original") {
+    const { count: cachedCount, error: cachedCountError } = await admin
+      .from("questions")
+      .select("id", { count: "exact", head: true })
+      .eq("subject_id", subjectId)
+      .eq("exam_type", subject.exam_type);
+    if (cachedCountError) {
+      return noStoreJson(
+        { error: "Could not load questions" },
+        { status: 500 },
+      );
+    }
+    if ((cachedCount ?? 0) < limit) {
+      try {
+        await refillQuestionCacheForSubject(examType, subjectId);
+      } catch (error) {
+        // Existing cached rows remain usable when the provider is unavailable.
+        console.warn("question_cache_refill_failed", {
+          subjectId,
+          examType,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
   }
 
@@ -242,9 +277,11 @@ async function handlePost(request: Request) {
       "id, prompt, options, correct_answer, explanation, topic, year, subject_id, exam_type",
     )
     .eq("subject_id", subjectId)
-    .eq("exam_type", examType)
-    .limit(limit * 4);
-  if (year) query.eq("year", year);
+    .eq("exam_type", subject.exam_type)
+    .order("created_at", { ascending: false })
+    .limit(Math.max(limit * 4, SESSION_POOL_SIZE));
+  if (year !== undefined) query.eq("year", year);
+  if (source === "original") query.eq("source", "original");
   const { data: questions, error: questionsError } = await query;
   if (questionsError) {
     return noStoreJson({ error: "Could not load questions" }, { status: 500 });
@@ -253,7 +290,9 @@ async function handlePost(request: Request) {
   return noStoreJson({
     questions: shuffle((questions ?? []) as StoredQuestion[])
       .filter(isRenderableQuestion)
-      .map(randomizeOptionOrder)
+      .map((question) =>
+        randomizeOptionOrder({ ...question, exam_type: examType }),
+      )
       .slice(0, limit),
     isPro,
   });

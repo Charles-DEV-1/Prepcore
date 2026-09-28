@@ -26,6 +26,12 @@ import { checkSignupAvailability, signInWithGoogle, sendEmailSignInLink } from "
 
 export function AuthCard({ mode }: { mode: "login" | "signup" }) {
   const searchParams = useSearchParams();
+  const callbackError = searchParams.get("error");
+  const callbackErrorMessage = callbackError === "profile_setup_failed"
+    ? "We couldn't finish setting up your account. Please sign in again. If this keeps happening, contact support."
+    : callbackError === "sign_in_failed"
+      ? "That sign-in link didn't work. Please request a new one."
+      : null;
   const refParam = searchParams.get("ref") ?? getReferralCookie();
   const switchAuthHref =
     mode === "login"
@@ -39,6 +45,7 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
   const [linkSent, setLinkSent] = useState(false);
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
+  const [showCallbackError, setShowCallbackError] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [resendSeconds, setResendSeconds] = useState(0);
   const emailForm = useForm<EmailAuthValues>({
@@ -57,6 +64,7 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
 
   async function requestSignInLink(values: EmailAuthValues) {
     setError("");
+    setShowCallbackError(false);
     setIsLoading(true);
     const normalizedEmail = values.email.trim().toLowerCase();
     try {
@@ -148,9 +156,9 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
             </button>
           </div>
         )}
-        {error && (
+        {(error || (showCallbackError && callbackErrorMessage)) && (
           <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error}
+            {error || callbackErrorMessage}
           </p>
         )}
         <div className="my-5 flex items-center gap-3">

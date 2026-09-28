@@ -36,46 +36,53 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (error) {
-      return NextResponse.redirect(
-        `${origin}/login?error=${encodeURIComponent(error.message)}`,
-      );
+      return NextResponse.redirect(`${origin}/login?error=sign_in_failed`);
     }
     const {
       data: { user },
+      error: userError,
     } = await supabase.auth.getUser();
-    if (user) {
-      const fullName = user.user_metadata?.full_name as string | undefined;
-      await supabase.from("users").upsert(
-        {
-          id: user.id,
-          email: user.email,
-          full_name: fullName ?? null,
-        },
-        { onConflict: "id", ignoreDuplicates: false },
-      );
-
-      await applyReferralFromServerCookies();
-
-      if (diagnosticToken) {
-        await supabase
-          .from("diagnostic_test_results")
-          .update({ converted_to_signup: true })
-          .eq("session_token", diagnosticToken);
-      }
+    if (userError || !user) {
+      return NextResponse.redirect(`${origin}/login?error=sign_in_failed`);
     }
-    // Check if user has completed onboarding
-    // reuse the authenticated user retrieved above
-    if (user) {
-      const { data: profile } = await supabase
-        .from("users")
-        .select("onboarding_completed")
-        .eq("id", user.id)
-        .single();
 
-      // New user — no profile yet or onboarding not done
-      if (!profile || !profile.onboarding_completed) {
-        return NextResponse.redirect(`${origin}/onboarding`);
-      }
+    const fullName = user.user_metadata?.full_name;
+    const { error: profileWriteError } = await supabase.from("users").upsert(
+      {
+        id: user.id,
+        email: user.email,
+        full_name: typeof fullName === "string" ? fullName : null,
+      },
+      { onConflict: "id", ignoreDuplicates: true },
+    );
+    if (profileWriteError) {
+      console.error("Unable to initialize user profile", { code: profileWriteError.code });
+      await supabase.auth.signOut({ scope: "local" });
+      return NextResponse.redirect(`${origin}/login?error=profile_setup_failed`);
+    }
+
+    const { data: profile, error: profileReadError } = await supabase
+      .from("users")
+      .select("onboarding_completed")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (profileReadError || !profile) {
+      console.error("Unable to verify user profile", { code: profileReadError?.code });
+      await supabase.auth.signOut({ scope: "local" });
+      return NextResponse.redirect(`${origin}/login?error=profile_setup_failed`);
+    }
+
+    await applyReferralFromServerCookies();
+
+    if (diagnosticToken) {
+      await supabase
+        .from("diagnostic_test_results")
+        .update({ converted_to_signup: true })
+        .eq("session_token", diagnosticToken);
+    }
+
+    if (!profile.onboarding_completed) {
+      return NextResponse.redirect(`${origin}/onboarding`);
     }
   }
 

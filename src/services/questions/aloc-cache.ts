@@ -26,7 +26,7 @@ type AlocResponse = {
 };
 
 type CacheState = { next_cursor: string | null; exhausted: boolean };
-type CacheSubject = { id: string; name: string };
+type CacheSubject = { id: string; name: string; exam_type: string };
 
 export type QuestionCacheResult = {
   examType: ExamType;
@@ -59,7 +59,7 @@ function isOptionMap(value: unknown): value is Record<string, string> {
   );
 }
 
-function normalizeQuestion(question: AlocQuestion, subjectId: string, examType: ExamType) {
+function normalizeQuestion(question: AlocQuestion, subjectId: string, examType: ExamType, storedExamType: string) {
   const prompt = question.text?.trim();
   const correctAnswer = question.correctAnswer?.trim();
   if (
@@ -70,7 +70,7 @@ function normalizeQuestion(question: AlocQuestion, subjectId: string, examType: 
 
   return {
     subject_id: subjectId,
-    exam_type: examType,
+    exam_type: storedExamType,
     year: typeof question.year === "number" ? question.year : null,
     topic: question.section?.trim() || question.category?.trim() || null,
     prompt,
@@ -106,11 +106,11 @@ async function fetchAlocPage(examType: ExamType, subjectSlug: string, cursor?: s
   };
 }
 
-async function getQuestionCount(subjectId: string, examType: ExamType) {
+async function getQuestionCount(subjectId: string, storedExamType: string) {
   const admin = createServiceRoleClient();
   const { count, error } = await admin
     .from("questions").select("id", { count: "exact", head: true })
-    .eq("subject_id", subjectId).eq("exam_type", examType);
+    .eq("subject_id", subjectId).eq("exam_type", storedExamType);
   if (error) throw error;
   return count ?? 0;
 }
@@ -119,11 +119,12 @@ async function getQuestionCount(subjectId: string, examType: ExamType) {
 export async function refillQuestionCacheForSubject(examType: ExamType, subjectId: string): Promise<QuestionCacheResult> {
   const admin = createServiceRoleClient();
   const { data: subject, error: subjectError } = await admin
-    .from("subjects").select("id, name").eq("id", subjectId).eq("exam_type", examType).maybeSingle();
+    .from("subjects").select("id, name, exam_type").eq("id", subjectId).maybeSingle();
   if (subjectError) throw subjectError;
-  if (!subject) throw new Error("Unknown exam subject.");
+  if (!subject || String(subject.exam_type).toLowerCase() !== examType) throw new Error("Unknown exam subject.");
+  const storedExamType = subject.exam_type;
 
-  const totalBefore = await getQuestionCount(subjectId, examType);
+  const totalBefore = await getQuestionCount(subjectId, storedExamType);
   const result: QuestionCacheResult = { examType, subjectId, subjects: 1, fetched: 0, inserted: 0, skipped: 0, totalCached: totalBefore, complete: totalBefore >= TARGET_QUESTIONS_PER_SUBJECT };
   if (result.complete) return result;
 
@@ -139,15 +140,17 @@ export async function refillQuestionCacheForSubject(examType: ExamType, subjectI
   result.fetched = questions.length;
   const now = new Date().toISOString();
   if (!questions.length) {
-    await admin.from("question_cache_state").upsert({ subject_id: subjectId, exam_type: examType, next_cursor: null, exhausted: true, last_attempt_at: now, updated_at: now } as never);
+    const { error: stateWriteError } = await admin.from("question_cache_state").upsert({ subject_id: subjectId, exam_type: examType, next_cursor: null, exhausted: true, last_attempt_at: now, updated_at: now } as never);
+    if (stateWriteError) throw stateWriteError;
     return { ...result, complete: true };
   }
 
-  const rows = questions.map((question) => normalizeQuestion(question, subjectId, examType)).filter((question): question is NonNullable<typeof question> => question !== null);
+  const rows = questions.map((question) => normalizeQuestion(question, subjectId, examType, storedExamType)).filter((question): question is NonNullable<typeof question> => question !== null);
   result.skipped = questions.length - rows.length;
   const providerIds = rows.map((row) => row.source_question_id);
-  const { data: existing, error: existingError } = await admin
-    .from("questions").select("source_question_id").eq("source", "aloc").in("source_question_id", providerIds);
+  const { data: existing, error: existingError } = providerIds.length
+    ? await admin.from("questions").select("source_question_id").eq("source", "aloc").in("source_question_id", providerIds)
+    : { data: [], error: null };
   if (existingError) throw existingError;
   const existingIds = new Set((existing ?? []).map((row) => row.source_question_id).filter(Boolean));
   const newRows = rows.filter((row) => !existingIds.has(row.source_question_id));
@@ -159,12 +162,13 @@ export async function refillQuestionCacheForSubject(examType: ExamType, subjectI
     else result.inserted = newRows.length;
   }
 
-  result.totalCached = await getQuestionCount(subjectId, examType);
+  result.totalCached = await getQuestionCount(subjectId, storedExamType);
   result.complete = result.totalCached >= TARGET_QUESTIONS_PER_SUBJECT || !nextCursor;
-  await admin.from("question_cache_state").upsert({
+  const { error: stateWriteError } = await admin.from("question_cache_state").upsert({
     subject_id: subjectId, exam_type: examType, next_cursor: result.complete ? null : nextCursor,
     exhausted: !nextCursor, last_attempt_at: now, last_success_at: now, updated_at: now,
   } as never);
+  if (stateWriteError) throw stateWriteError;
   return result;
 }
 
@@ -172,10 +176,10 @@ export async function refillQuestionCacheForSubject(examType: ExamType, subjectI
 export async function refreshQuestionCache(examType: ExamType) {
   const admin = createServiceRoleClient();
   const { data: subjects, error } = await admin
-    .from("subjects").select("id").eq("exam_type", examType).order("name", { ascending: true });
+    .from("subjects").select("id, exam_type").order("name", { ascending: true });
   if (error) throw error;
-  for (const subject of subjects ?? []) {
-    const total = await getQuestionCount(subject.id, examType);
+  for (const subject of (subjects ?? []).filter((item) => String(item.exam_type).toLowerCase() === examType)) {
+    const total = await getQuestionCount(subject.id, subject.exam_type);
     if (total >= TARGET_QUESTIONS_PER_SUBJECT) continue;
     const result = await refillQuestionCacheForSubject(examType, subject.id);
     if (!result.complete || result.inserted > 0 || result.fetched > 0) return result;

@@ -90,7 +90,6 @@ export async function getRandomQuestionsBySubject(
       "id, prompt, options, correct_answer, explanation, topic, year, subject_id, exam_type",
     )
     .eq("subject_id", subjectId)
-    .eq("exam_type", examType)
     .order("year", { ascending: false })
     .limit(Math.max(limit * 4, limit));
 
@@ -107,15 +106,16 @@ export async function getRandomQuestionsBySubject(
 
 /**
  * Uses the protected server endpoint. Free users receive only the local
- * Supabase bank; Pro users receive a shuffled mix that includes cached ALOC
+ * Supabase and original bank; Pro users can also receive cached ALOC
  * questions. The ALOC token never reaches the browser.
  */
 export async function getSessionQuestions(
   subjectId: string,
   limit: number,
   examType: ExamType = "jamb",
+  source?: "original",
 ): Promise<QuestionForSession[]> {
-  return getQuestionsFromSessionApi({ subjectId, limit, examType });
+  return getQuestionsFromSessionApi({ subjectId, limit, examType, source });
 }
 
 export async function getYearSessionQuestions(
@@ -123,8 +123,15 @@ export async function getYearSessionQuestions(
   limit: number,
   examType: ExamType,
   year: number,
+  source?: "original",
 ): Promise<QuestionForSession[]> {
-  return getQuestionsFromSessionApi({ subjectId, limit, examType, year });
+  return getQuestionsFromSessionApi({
+    subjectId,
+    limit,
+    examType,
+    year,
+    source,
+  });
 }
 
 async function getQuestionsFromSessionApi(input: {
@@ -132,6 +139,7 @@ async function getQuestionsFromSessionApi(input: {
   limit: number;
   examType: ExamType;
   year?: number;
+  source?: "original";
 }): Promise<QuestionForSession[]> {
   const response = await fetch("/api/questions/session", {
     method: "POST",
@@ -169,7 +177,7 @@ export async function getSubjectsByExamType(
     { p_exam_type: examType } as never,
   );
 
-  if (!rpcError && rpcSubjects) {
+  if (!rpcError && rpcSubjects?.length) {
     return (
       rpcSubjects as unknown as Array<{
         subject_id: string;
@@ -177,28 +185,34 @@ export async function getSubjectsByExamType(
         question_count: number;
         exam_type?: ExamType;
       }>
-    ).map((subject) => ({
-      id: subject.subject_id,
-      name: subject.subject_name,
-      exam_type: (subject.exam_type ?? examType) as ExamType,
-      question_count: subject.question_count ?? 0,
-    }));
+    )
+      .filter(
+        (subject) =>
+          String(subject.exam_type ?? examType).toLowerCase() === examType,
+      )
+      .map((subject) => ({
+        id: subject.subject_id,
+        name: subject.subject_name,
+        exam_type: examType,
+        question_count: subject.question_count ?? 0,
+      }));
   }
 
   const { data, error } = await supabase
     .from("subjects")
     .select("id, name, exam_type")
-    .eq("exam_type", examType)
     .order("name", { ascending: true });
 
   if (error || !data) return [];
 
-  return data.map((subject) => ({
-    id: subject.id,
-    name: subject.name,
-    exam_type: subject.exam_type as ExamType,
-    question_count: 0,
-  }));
+  return data
+    .filter((subject) => String(subject.exam_type).toLowerCase() === examType)
+    .map((subject) => ({
+      id: subject.id,
+      name: subject.name,
+      exam_type: examType,
+      question_count: 0,
+    }));
 }
 
 export async function getAvailableYears(
@@ -211,7 +225,7 @@ export async function getAvailableYears(
     { p_subject_id: subjectId, p_exam_type: examType } as never,
   );
 
-  if (!rpcError && rpcYears) {
+  if (!rpcError && rpcYears?.length) {
     return (rpcYears as Array<{ year: number } | number>)
       .map((item) => (typeof item === "number" ? item : item.year))
       .filter((year) => Number.isFinite(year));
@@ -221,7 +235,6 @@ export async function getAvailableYears(
     .from("questions")
     .select("year")
     .eq("subject_id", subjectId)
-    .eq("exam_type", examType)
     .not("year", "is", null)
     .order("year", { ascending: false });
 
@@ -249,7 +262,6 @@ export async function getQuestionsBySubjectYear(
       "id, prompt, options, correct_answer, explanation, topic, year, subject_id, exam_type",
     )
     .eq("subject_id", subjectId)
-    .eq("exam_type", examType)
     .eq("year", year)
     .limit(Math.max(limit * 4, limit));
 

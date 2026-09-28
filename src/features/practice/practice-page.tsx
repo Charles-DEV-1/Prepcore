@@ -3,7 +3,7 @@
 import { awardPoints } from "@/services/api/points";
 import { ReportQuestion } from "@/components/ui/report-question";
 import { AIExplanation } from "@/components/ui/ai-explanation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -50,8 +50,12 @@ export function PracticePage() {
     SUBJECTS[0],
   );
   const [waecSubjects, setWaecSubjects] = useState<SubjectForExam[]>([]);
+  const [waecSubjectsLoaded, setWaecSubjectsLoaded] = useState(false);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [selectedSource, setSelectedSource] = useState<"all" | "original">(
+    "all",
+  );
   const [examGoals, setExamGoals] = useState<ExamGoal>(["jamb"]);
   const [questions, setQuestions] = useState<QuestionForSession[]>([]);
   const [questionIndex, setQuestionIndex] = useState(0);
@@ -67,6 +71,7 @@ export function PracticePage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [questionDirection, setQuestionDirection] = useState<1 | -1>(1);
   const reducedMotion = useReducedMotion();
+  const requestIdRef = useRef(0);
 
   const supabase = useMemo(() => createClient(), []);
   const canUseActiveExam = examGoals.includes(activeExamType);
@@ -97,6 +102,7 @@ export function PracticePage() {
       }
 
       setWaecSubjects(await getSubjectsByExamType(supabase, "waec"));
+      setWaecSubjectsLoaded(true);
     }
 
     void loadExamContext();
@@ -106,6 +112,7 @@ export function PracticePage() {
     if (activeExamType === "jamb") {
       setSelectedSubject(SUBJECTS[0]);
       setSelectedYear(null);
+      setSelectedSource("all");
       setAvailableYears([]);
       return;
     }
@@ -121,6 +128,7 @@ export function PracticePage() {
 
   useEffect(() => {
     if (activeExamType !== "waec" || !selectedSubject.id) return;
+    let cancelled = false;
 
     async function loadYears() {
       const years = await getAvailableYears(
@@ -128,17 +136,28 @@ export function PracticePage() {
         selectedSubject.id,
         "waec",
       );
-      setAvailableYears(years);
-      setSelectedYear(years[0] ?? null);
+      if (!cancelled) setAvailableYears(years);
     }
 
     void loadYears();
+    return () => {
+      cancelled = true;
+    };
   }, [activeExamType, selectedSubject.id, supabase]);
 
   const loadQuestions = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
     if (!canUseActiveExam) {
       setQuestions([]);
       setLoading(false);
+      return;
+    }
+    if (
+      activeExamType === "waec" &&
+      !waecSubjects.some((subject) => subject.id === selectedSubject.id)
+    ) {
+      setQuestions([]);
+      setLoading(!waecSubjectsLoaded);
       return;
     }
 
@@ -154,25 +173,23 @@ export function PracticePage() {
 
     try {
       const nextQuestions =
-        activeExamType === "waec" && selectedYear
+        activeExamType === "waec" && selectedYear && selectedSource === "all"
           ? await getYearSessionQuestions(
               selectedSubject.id,
               25,
               activeExamType,
               selectedYear,
             )
-          : await getSessionQuestions(selectedSubject.id, 25, activeExamType);
+          : await getSessionQuestions(
+              selectedSubject.id,
+              25,
+              activeExamType,
+              selectedSource === "original" ? "original" : undefined,
+            );
+      if (requestId !== requestIdRef.current) return;
       setQuestions(nextQuestions);
-      if (activeExamType === "waec") {
-        const years = await getAvailableYears(
-          supabase,
-          selectedSubject.id,
-          "waec",
-        );
-        setAvailableYears(years);
-        if (!selectedYear && years[0]) setSelectedYear(years[0]);
-      }
     } catch (error) {
+      if (requestId !== requestIdRef.current) return;
       setQuestions([]);
       setLoadError(
         error instanceof Error
@@ -180,14 +197,16 @@ export function PracticePage() {
           : "Could not load questions. Please try again.",
       );
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
   }, [
     activeExamType,
     canUseActiveExam,
     selectedSubject.id,
     selectedYear,
-    supabase,
+    selectedSource,
+    waecSubjects,
+    waecSubjectsLoaded,
   ]);
 
   useEffect(() => {
@@ -279,6 +298,10 @@ export function PracticePage() {
       : 0;
   const accuracy = answered > 0 ? Math.round((score / answered) * 100) : 0;
   const examLabel = activeExamType.toUpperCase();
+  const noWaecSubjects =
+    activeExamType === "waec" &&
+    waecSubjectsLoaded &&
+    waecSubjects.length === 0;
 
   return (
     <div className="space-y-4">
@@ -306,6 +329,17 @@ export function PracticePage() {
             </p>
           </CardContent>
         </Card>
+      ) : noWaecSubjects ? (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <p className="font-semibold text-navy">
+              No WAEC subjects are available yet.
+            </p>
+            <p className="mt-2 text-sm text-slate-500">
+              Please try again later or contact support if this continues.
+            </p>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
           <Card>
@@ -320,7 +354,10 @@ export function PracticePage() {
                     variant={
                       selectedSubject.id === subject.id ? "default" : "outline"
                     }
-                    onClick={() => setSelectedSubject(subject)}
+                    onClick={() => {
+                      setSelectedSubject(subject);
+                      setSelectedYear(null);
+                    }}
                   >
                     {subject.label}
                   </Button>
@@ -329,14 +366,52 @@ export function PracticePage() {
 
               {activeExamType === "waec" && (
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold text-navy">Year</p>
+                  <label
+                    className="block text-sm font-semibold text-navy"
+                    htmlFor="question-source"
+                  >
+                    Question set
+                  </label>
                   <select
+                    id="question-source"
+                    className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm dark:border-border-card dark:bg-card-surface dark:text-main"
+                    value={selectedSource}
+                    onChange={(event) => {
+                      setSelectedSource(
+                        event.target.value as "all" | "original",
+                      );
+                      setSelectedYear(null);
+                    }}
+                  >
+                    <option value="all">All available questions</option>
+                    <option value="original">
+                      Original syllabus questions only
+                    </option>
+                  </select>
+                </div>
+              )}
+
+              {activeExamType === "waec" && selectedSource === "all" && (
+                <div className="space-y-2">
+                  <label
+                    className="block text-sm font-semibold text-navy"
+                    htmlFor="practice-year"
+                  >
+                    Year
+                  </label>
+                  <select
+                    id="practice-year"
                     className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm dark:border-border-card dark:bg-card-surface dark:text-main"
                     value={selectedYear ?? ""}
                     onChange={(event) =>
-                      setSelectedYear(Number(event.target.value))
+                      setSelectedYear(
+                        event.target.value ? Number(event.target.value) : null,
+                      )
                     }
                   >
+                    <option value="">
+                      All years, including original questions
+                    </option>
                     {availableYears.map((year) => (
                       <option key={year} value={year}>
                         {year}
@@ -403,7 +478,10 @@ export function PracticePage() {
                 <div className="py-20 text-center space-y-4">
                   <p className="text-lg font-semibold text-navy">
                     {questions.length === 0
-                      ? `No ${examLabel} questions are available for this subject${selectedYear ? ` in ${selectedYear}` : ""} yet.`
+                      ? selectedSource === "original" &&
+                        activeExamType === "waec"
+                        ? `No original ${examLabel} questions are available for this subject yet.`
+                        : `No ${examLabel} questions are available for this subject${selectedYear ? ` in ${selectedYear}` : ""} yet.`
                       : `You finished all ${selectedSubject.label} questions.`}
                   </p>
                   {questions.length > 0 && (
