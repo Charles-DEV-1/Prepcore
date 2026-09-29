@@ -218,7 +218,7 @@ export function LandingPage() {
 
       <section className="bg-white px-4 py-10 dark:bg-[#0F172A] sm:py-14">
         <div className="container">
-          <div className="overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] p-7 text-white shadow-[0_20px_50px_rgba(37,99,235,0.2)] dark:bg-[#111C31] dark:ring-1 dark:ring-blue-500/20 sm:p-10">
+          <div className="overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] p-7 text-white shadow-[0_20px_50px_rgba(37,99,235,0.2)] dark:bg-[#111C31] dark:bg-none dark:ring-1 dark:ring-blue-500/20 sm:p-10">
             <p className="text-sm font-bold uppercase tracking-[0.12em] text-blue-100">
               Free JAMB diagnostic
             </p>
@@ -232,7 +232,7 @@ export function LandingPage() {
               asChild
               size="lg"
               variant="outline"
-              className="mt-6 border-white bg-white text-primary hover:bg-blue-50"
+              className="mt-6 border-white bg-white text-blue-800 hover:bg-blue-50 dark:border-slate-200 dark:bg-slate-100 dark:text-blue-900 dark:hover:bg-slate-200 dark:hover:text-blue-950"
             >
               <Link href="/diagnostic">
                 Take the free diagnostic test <ArrowRight className="h-4 w-4" />

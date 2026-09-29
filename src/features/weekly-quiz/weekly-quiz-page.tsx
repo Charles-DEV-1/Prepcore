@@ -615,7 +615,7 @@ export function WeeklyQuizPage() {
             </Badge>
           )}
           {phase === "already_done" && (
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500">
               You already completed this week&apos;s quiz
             </p>
           )}
@@ -627,7 +627,7 @@ export function WeeklyQuizPage() {
             <CardTitle className="flex items-center gap-2">
               <Trophy className="h-5 w-5 text-amber-500" />
               This week&apos;s leaderboard
-              <span className="ml-auto text-xs font-normal text-slate-400">
+              <span className="ml-auto text-xs font-normal text-slate-500">
                 {weekLabel}
               </span>
             </CardTitle>
@@ -703,7 +703,7 @@ function LeaderboardList({
                 {index < 3 ? (
                   medals[index]
                 ) : (
-                  <span className="text-sm font-bold text-slate-400">
+                  <span className="text-sm font-bold text-slate-500">
                     #{index + 1}
                   </span>
                 )}
@@ -722,7 +722,7 @@ function LeaderboardList({
                     </span>
                   )}
                 </p>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-500">
                   {entry.score} / {entry.total_questions} correct
                 </p>
               </div>

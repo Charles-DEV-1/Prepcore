@@ -208,7 +208,7 @@ export function LeaderboardPage() {
                     {isBelowTop20 && index > 0 && (
                       <div className="my-3 flex items-center gap-3">
                         <div className="flex-1 h-px bg-border"></div>
-                        <p className="text-xs text-slate-400 font-medium">
+                        <p className="text-xs text-slate-500 font-medium">
                           Your Rank
                         </p>
                         <div className="flex-1 h-px bg-border"></div>
@@ -227,7 +227,7 @@ export function LeaderboardPage() {
                           {entry.rank < 4 ? (
                             medals[entry.rank - 1]
                           ) : (
-                            <span className="text-sm font-bold text-slate-400">
+                            <span className="text-sm font-bold text-slate-500">
                               #{entry.rank}
                             </span>
                           )}
@@ -246,7 +246,7 @@ export function LeaderboardPage() {
                               </span>
                             )}
                           </p>
-                          <p className="text-xs text-slate-400">
+                          <p className="text-xs text-slate-500">
                             {entry.score} / {entry.total_questions} correct
                           </p>
                         </div>

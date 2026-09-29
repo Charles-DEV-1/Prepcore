@@ -136,27 +136,27 @@ export default function ProfilePage() {
       {/* Plan card */}
       {!planLoading &&
         (isPro ? (
-          <Card className="border-yellow-200 bg-gradient-to-br from-yellow-50 to-amber-50 shadow-sm dark:border-amber-400/40 dark:from-amber-500/15 dark:to-slate-900">
+          <Card className="border-amber-200 bg-amber-50 shadow-sm dark:border-amber-500/35 dark:bg-slate-800">
             <CardContent className="p-5">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100 dark:bg-amber-400/20">
                     <Crown className="h-5 w-5 text-yellow-600 dark:text-amber-300" />
                   </div>
                   <div>
-                    <p className="font-semibold text-navy">Prepcore Pro</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="font-semibold text-navy dark:text-slate-100">Prepcore Pro</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-300">
                       {isPartnerBulkPro && planPartnerName
                         ? `Included via ${planPartnerName} lesson center plan`
-                        : "Active · Full access until Dec 2026"}
+                        : "Active · Full Pro access"}
                     </p>
                   </div>
                 </div>
-                <Badge className="border-yellow-300 bg-yellow-100 text-yellow-700 dark:border-amber-400/40 dark:bg-amber-400/15 dark:text-amber-200">
+                <Badge className="border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-400/50 dark:bg-amber-400/15 dark:text-amber-200">
                   Active
                 </Badge>
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-2">
+              <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {[
                   "Unlimited mock exams",
                   "All flashcards",
@@ -165,9 +165,9 @@ export default function ProfilePage() {
                 ].map((f) => (
                   <div
                     key={f}
-                    className="flex items-center gap-1.5 text-xs text-slate-600"
+                    className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200"
                   >
-                    <Check className="h-3 w-3 text-green-500 flex-shrink-0" />
+                    <Check className="h-4 w-4 flex-shrink-0 text-green-700 dark:text-green-300" />
                     {f}
                   </div>
                 ))}
@@ -298,7 +298,7 @@ export default function ProfilePage() {
               disabled
               className="bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
             />
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500">
               Email cannot be changed — linked to your Google account
             </p>
           </div>
@@ -365,7 +365,7 @@ export default function ProfilePage() {
               <p className="text-sm text-slate-600 mt-0.5">
                 {referral.partner_name}
               </p>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="mt-1 text-xs text-slate-500">
                 Referral code: {referral.code}
               </p>
             </div>

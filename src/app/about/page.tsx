@@ -61,7 +61,7 @@ export default function AboutPage() {
                 href="https://www.linkedin.com/in/ozebo-charles-b88471343/"
                 target="_blank"
                 rel="noreferrer"
-                className="mt-7 inline-flex items-center gap-2 rounded-xl border border-[#0A66C2]/20 bg-white px-4 py-2.5 text-sm font-semibold text-[#0A66C2] transition hover:-translate-y-0.5 hover:border-[#0A66C2]/40 hover:bg-[#0A66C2]/5"
+                className="mt-7 inline-flex items-center gap-2 rounded-xl border border-[#0A66C2]/30 bg-white px-4 py-2.5 text-sm font-semibold text-[#0A66C2] transition hover:-translate-y-0.5 hover:border-[#0A66C2]/50 hover:bg-[#0A66C2]/5 dark:border-blue-400/50 dark:bg-slate-800 dark:text-blue-200 dark:hover:border-blue-300 dark:hover:bg-slate-700"
               >
                 <Linkedin className="h-4 w-4" />
                 Connect with Charles on LinkedIn

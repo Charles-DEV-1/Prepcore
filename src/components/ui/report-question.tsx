@@ -60,7 +60,7 @@ export function ReportQuestion({ questionId }: Props) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 transition mt-1"
+        className="mt-1 flex items-center gap-1.5 text-xs text-slate-600 transition hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
       >
         <Flag className="h-3 w-3" />
         Report this question
@@ -77,7 +77,8 @@ export function ReportQuestion({ questionId }: Props) {
         </p>
         <button
           onClick={() => setOpen(false)}
-          className="text-slate-400 hover:text-slate-600"
+          className="text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+          aria-label="Close report form"
         >
           <X className="h-4 w-4" />
         </button>
@@ -104,7 +105,7 @@ export function ReportQuestion({ questionId }: Props) {
                   onChange={() => setSelectedReason(reason)}
                   className="mt-0.5 accent-blue-600 flex-shrink-0"
                 />
-                <span className="text-xs text-slate-600 group-hover:text-slate-800 transition leading-5">
+                <span className="text-xs text-slate-700 transition group-hover:text-slate-900 dark:text-slate-300 dark:group-hover:text-white leading-5">
                   {reason}
                 </span>
               </label>
@@ -117,7 +118,7 @@ export function ReportQuestion({ questionId }: Props) {
               value={details}
               onChange={(e) => setDetails(e.target.value)}
               rows={2}
-              className="w-full rounded-xl border border-border bg-white px-3 py-2 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-primary resize-none"
+              className="w-full resize-none rounded-xl border border-border bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-500 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
             />
           )}
 

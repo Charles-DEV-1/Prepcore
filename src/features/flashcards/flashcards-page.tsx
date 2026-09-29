@@ -206,7 +206,7 @@ export function FlashcardsPage() {
                 Upgrade to Pro — ₦3,000
               </Link>
             </Button>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500">
               One-time payment · Access until after JAMB
             </p>
           </div>
@@ -352,7 +352,7 @@ export function FlashcardsPage() {
           Swipe left or right to navigate · {index + 1} of {dailyCards.length}{" "}
           today
         </p>
-        <p className="mt-1 text-center text-xs text-slate-400">
+        <p className="mt-1 text-center text-xs text-slate-500">
           Today&apos;s set draws from {questionCount} original questions and{" "}
           {flashcards.length} concept cards. It changes at midnight Nigeria
           time; cards repeat after their bank is covered.
