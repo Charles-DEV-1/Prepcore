@@ -1,33 +1,12 @@
 import { getCurrentStreak } from "@/services/api/streak";
 import type { createClient } from "@/services/supabase/client";
 import type { ExamType } from "@/types/app";
+import {
+  buildStudyRecommendations,
+  type RecommendationEvidence,
+} from "@/lib/study-recommendations";
 
 type AppSupabaseClient = ReturnType<typeof createClient>;
-
-const MINIMUM_RECOMMENDATION_ANSWERS = 3;
-const MAXIMUM_TOPIC_LABEL_LENGTH = 80;
-
-function cleanTopicLabel(value: string | null | undefined) {
-  if (!value) return null;
-  const normalized = value
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  // Older imports sometimes put the full question prompt in `topic`. Do not
-  // turn that raw content into a misleading recommendation label.
-  if (
-    !normalized ||
-    normalized.length > MAXIMUM_TOPIC_LABEL_LENGTH ||
-    /<|>|\bthese questions\b|\bif our thoughts\b/i.test(value)
-  ) {
-    return null;
-  }
-
-  return normalized;
-}
 
 export async function getDashboardData(
   supabase: AppSupabaseClient,
@@ -61,7 +40,9 @@ export async function getDashboardData(
       getCurrentStreak(supabase, userId),
     ]);
 
-  const sessions = sessionsResult.data ?? [];
+  const sessions = (sessionsResult.data ?? []).filter(
+    (session) => session.total_questions > 0,
+  );
   const profile = profileResult.data;
 
   // Calculate stats
@@ -102,81 +83,47 @@ export async function getDashboardData(
     }),
   }));
 
-  // Get weak topics from answers
-  const { data: weakData } = await supabase
-    .from("answers")
-    .select(
-      `
-      is_correct,
-      question:questions (
-        topic,
-        subject:subjects ( name )
-      )
-    `,
+  // Recent evidence only. One latest answer per question is counted by the
+  // pure ranking function, so repeating a familiar item cannot dominate it.
+  const recentIds = sessions
+    .filter(
+      (session) =>
+        new Date(session.created_at).getTime() >= Date.now() - 60 * 86_400_000,
     )
-    .in(
-      "session_id",
-      sessions.slice(0, 10).map((s) => s.id),
-    );
-
-  // Calculate accuracy per topic
-  const topicMap: Record<string, { correct: number; total: number; subject: string; topic: string }> = {};
-  const subjectMap: Record<string, { correct: number; total: number }> = {};
-
-  if (weakData) {
-    weakData.forEach((answer) => {
+    .slice(0, 100)
+    .map((session) => session.id);
+  const { data: answerData, error: recommendationError } = recentIds.length
+    ? await supabase
+        .from("answers")
+        .select(
+          "question_id, is_correct, created_at, question:questions(topic, subject_id, subject:subjects(name))",
+        )
+        .in("session_id", recentIds)
+        .order("created_at", { ascending: false })
+        .limit(1000)
+    : { data: [], error: null };
+  const evidence: RecommendationEvidence[] = (answerData ?? []).flatMap(
+    (answer) => {
       const question = Array.isArray(answer.question)
         ? answer.question[0]
         : answer.question;
-      const subjectRow = Array.isArray(question?.subject)
-        ? question?.subject[0]
+      const subject = Array.isArray(question?.subject)
+        ? question.subject[0]
         : question?.subject;
-      const topic = cleanTopicLabel(question?.topic);
-      const subject = subjectRow?.name;
-      const isCorrect = answer.is_correct;
-      if (!subject) return;
-
-      if (!subjectMap[subject]) subjectMap[subject] = { correct: 0, total: 0 };
-      subjectMap[subject].total++;
-      if (isCorrect) subjectMap[subject].correct++;
-
-      if (!topic) return;
-      const key = `${subject}:${topic.toLowerCase()}`;
-      if (!topicMap[key]) topicMap[key] = { correct: 0, total: 0, subject, topic };
-      topicMap[key].total++;
-      if (isCorrect) topicMap[key].correct++;
-    });
-  }
-
-  const weakTopics = Object.values(topicMap)
-    .filter(({ total }) => total >= MINIMUM_RECOMMENDATION_ANSWERS)
-    .map(({ topic, correct, total, subject }) => ({
-      topic,
-      subject,
-      accuracy: Math.round((correct / total) * 100),
-      answered: total,
-    }))
-    .filter((t) => t.accuracy < 70)
-    .sort((a, b) => a.accuracy - b.accuracy)
-    .slice(0, 3);
-
-  // When imported question data has no safe topic labels, retain a useful
-  // recommendation from the student's actual subject-level answer history.
-  if (weakTopics.length === 0) {
-    weakTopics.push(
-      ...Object.entries(subjectMap)
-        .filter(([, value]) => value.total >= MINIMUM_RECOMMENDATION_ANSWERS)
-        .map(([subject, { correct, total }]) => ({
-          subject,
-          topic: "Subject review",
-          accuracy: Math.round((correct / total) * 100),
-          answered: total,
-        }))
-        .filter((topic) => topic.accuracy < 70)
-        .sort((a, b) => a.accuracy - b.accuracy)
-        .slice(0, 3),
-    );
-  }
+      if (!question?.topic || !question.subject_id || !subject?.name) return [];
+      return [
+        {
+          questionId: answer.question_id,
+          subjectId: question.subject_id,
+          subject: subject.name,
+          topic: question.topic,
+          correct: answer.is_correct,
+          answeredAt: answer.created_at,
+        },
+      ];
+    },
+  );
+  const recommendations = buildStudyRecommendations(evidence);
 
   return {
     averageScore,
@@ -187,7 +134,8 @@ export async function getDashboardData(
     examGoals: profile?.exam_goals ?? [profile?.exam_type ?? "jamb"],
     targetScore: profile?.target_score ?? 200,
     recentSessions,
-    weakTopics,
+    recommendations,
+    recommendationUnavailable: Boolean(recommendationError),
     hasSessions: sessions.length > 0,
     totalPoints: pointsResult.data?.total_points ?? 0,
     currentRank: pointsResult.data?.rank ?? "Beginner",

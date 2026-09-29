@@ -25,6 +25,10 @@ import { Progress } from "@/components/ui/progress";
 import { useExamStore } from "@/store/examStore";
 import { FeedbackPrompt } from "@/components/feedback/feedback-prompt";
 import type { ExamGoal, ExamType } from "@/types/app";
+import {
+  cleanTopicLabel,
+  type StudyRecommendation,
+} from "@/lib/study-recommendations";
 
 type DashboardData = {
   averageScore: number;
@@ -40,12 +44,8 @@ type DashboardData = {
     totalQuestions: number;
     date: string;
   }[];
-  weakTopics: {
-    topic: string;
-    subject: string;
-    accuracy: number;
-    answered: number;
-  }[];
+  recommendations: StudyRecommendation[];
+  recommendationUnavailable: boolean;
   hasSessions: boolean;
   totalPoints: number;
   currentRank: string;
@@ -147,21 +147,22 @@ export function DashboardPage({
                 Welcome to Prepcore! Start your first practice session to see
                 your personalised stats here.
               </p>
-            ) : activeData.weakTopics.length > 0 ? (
+            ) : activeData.recommendations.length > 0 ? (
               <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
                 Your average score is{" "}
                 <span className="font-semibold text-navy">
                   {activeData.averageScore}%
                 </span>
-                . Focus on{" "}
+                . Your next suggested topic is{" "}
                 <span className="font-semibold text-navy">
-                  {activeData.weakTopics[0]?.subject}
+                  {cleanTopicLabel(activeData.recommendations[0]?.topic)}
                 </span>{" "}
-                — your weakest area right now.
+                in {activeData.recommendations[0]?.subject}.
               </p>
             ) : (
               <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
-                You are doing great! Average score:{" "}
+                No topic needs extra attention from your recent answers. Average
+                score:{" "}
                 <span className="font-semibold text-navy">
                   {activeData.averageScore}%
                 </span>
@@ -223,38 +224,61 @@ export function DashboardPage({
             </CardTitle>
             <CardDescription>
               {activeData?.hasSessions
-                ? "Based on your weak topics and recent scores."
-                : "Complete a practice session to see personalised recommendations."}
+                ? "Based on your latest answers to distinct questions from the last 60 days. No AI guesswork."
+                : "Answer a few practice questions to see evidence-based suggestions."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {!activeData?.hasSessions || activeData.weakTopics.length === 0 ? (
+            {!activeData?.hasSessions ||
+            activeData.recommendations.length === 0 ? (
               <div className="rounded-2xl border border-border bg-[#F8FAFC] p-6 text-center dark:bg-slate-800/70">
                 <p className="text-sm text-slate-500">
                   {activeData?.hasSessions
-                    ? "Great job — no weak topics detected yet!"
-                    : "Your weak topics will appear here after your first session."}
+                    ? activeData.recommendationUnavailable
+                      ? "We couldn't analyse your recent answers right now. Please try again later."
+                      : "No clear focus topic right now. Keep practising to build more evidence."
+                    : "Your suggestions will appear as you answer questions."}
                 </p>
                 <Button asChild className="mt-4" size="sm">
                   <Link href="/practice">Start practice</Link>
                 </Button>
               </div>
             ) : (
-              activeData.weakTopics.map((topic) => (
+              activeData.recommendations.map((topic) => (
                 <div
-                  key={topic.topic}
+                  key={`${topic.subjectId}:${topic.topic}`}
                   className="rounded-2xl border border-border bg-[#F8FAFC] p-4 dark:bg-slate-800/70"
                 >
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
                       <p className="font-semibold text-navy">{topic.subject}</p>
-                      <p className="text-sm text-slate-500">{topic.topic}</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-300">
+                        {cleanTopicLabel(topic.topic)}
+                      </p>
                     </div>
-                    <Badge className="border-amber/20 bg-amber/10 text-amber">
-                      {topic.accuracy}% accuracy · {topic.answered} answered
+                    <Badge className="text-main">
+                      {topic.kind === "focus"
+                        ? "Focus now"
+                        : topic.kind === "check"
+                          ? "Check this topic"
+                          : "Refresh"}
                     </Badge>
                   </div>
+                  <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+                    {topic.reason}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    {topic.accuracy}% correct across {topic.answered} distinct{" "}
+                    {topic.answered === 1 ? "question" : "questions"}.
+                  </p>
                   <Progress value={topic.accuracy} className="mt-4" />
+                  <Button asChild size="sm" className="mt-4">
+                    <Link
+                      href={`/practice?${new URLSearchParams({ exam: currentExamType, subject: topic.subjectId, topic: topic.topic })}`}
+                    >
+                      Practise this topic <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
                 </div>
               ))
             )}

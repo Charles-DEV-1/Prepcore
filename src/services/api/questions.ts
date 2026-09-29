@@ -114,8 +114,15 @@ export async function getSessionQuestions(
   limit: number,
   examType: ExamType = "jamb",
   source?: "original",
+  topic?: string,
 ): Promise<QuestionForSession[]> {
-  return getQuestionsFromSessionApi({ subjectId, limit, examType, source });
+  return getQuestionsFromSessionApi({
+    subjectId,
+    limit,
+    examType,
+    source,
+    topic,
+  });
 }
 
 export async function getYearSessionQuestions(
@@ -140,6 +147,7 @@ async function getQuestionsFromSessionApi(input: {
   examType: ExamType;
   year?: number;
   source?: "original";
+  topic?: string;
 }): Promise<QuestionForSession[]> {
   const response = await fetch("/api/questions/session", {
     method: "POST",

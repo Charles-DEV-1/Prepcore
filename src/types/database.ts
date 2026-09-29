@@ -811,6 +811,21 @@ export type Database = {
       };
     };
     Functions: {
+      record_practice_answer: {
+        Args: {
+          p_session_id: string | null;
+          p_question_id: string;
+          p_selected_answer: string;
+          p_is_correct: boolean;
+          p_exam_type: string;
+        };
+        Returns: {
+          session_id: string;
+          answered: number;
+          correct: number;
+          score: number;
+        };
+      };
       get_pro_flashcards: {
         Args: Record<string, never>;
         Returns: Array<Database["public"]["Tables"]["flashcards"]["Row"]>;

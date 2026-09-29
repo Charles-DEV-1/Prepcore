@@ -20,12 +20,14 @@ import {
   type QuestionForSession,
   type SubjectForExam,
 } from "@/services/api/questions";
-import { saveSessionResult } from "@/services/api/sessions";
+import { recordPracticeAnswer } from "@/services/api/practice-answers";
 import { useExamStore } from "@/store/examStore";
 import { cn } from "@/lib/utils";
 import { AnswerFeedback, Stagger, StaggerItem } from "@/components/ui/motion";
 import { PageSkeleton } from "@/components/layout/page-skeleton";
 import type { ExamGoal } from "@/types/app";
+import type { ExamType } from "@/types/app";
+import { cleanTopicLabel } from "@/lib/study-recommendations";
 
 // Prepcore — Dark Mode
 const SUBJECTS = [
@@ -44,7 +46,11 @@ const SUBJECTS = [
 type PointsSupabaseClient = Parameters<typeof awardPoints>[0];
 type PracticeSubject = { label: string; id: string };
 
-export function PracticePage() {
+export function PracticePage({
+  recommendation = null,
+}: {
+  recommendation?: { exam: ExamType; subjectId: string; topic: string } | null;
+}) {
   const { activeExamType, setActiveExamType } = useExamStore();
   const [selectedSubject, setSelectedSubject] = useState<PracticeSubject>(
     SUBJECTS[0],
@@ -68,10 +74,18 @@ export function PracticePage() {
     Record<string, string>
   >({});
   const [sessionSaved, setSessionSaved] = useState(false);
+  const [savingAnswer, setSavingAnswer] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [selectedTopic, setSelectedTopic] = useState<string | null>(
+    recommendation?.topic ?? null,
+  );
   const [loadError, setLoadError] = useState<string | null>(null);
   const [questionDirection, setQuestionDirection] = useState<1 | -1>(1);
   const reducedMotion = useReducedMotion();
   const requestIdRef = useRef(0);
+  const sessionIdRef = useRef<string | null>(null);
+  const attemptedAnswerRef = useRef<string | null>(null);
+  const recommendationAppliedRef = useRef(false);
 
   const supabase = useMemo(() => createClient(), []);
   const canUseActiveExam = examGoals.includes(activeExamType);
@@ -98,7 +112,14 @@ export function PracticePage() {
         const goals = ((data as { exam_goals?: ExamGoal | null } | null)
           ?.exam_goals ?? ["jamb"]) as ExamGoal;
         setExamGoals(goals);
-        if (!goals.includes(activeExamType)) setActiveExamType(goals[0]);
+        if (
+          recommendation &&
+          !recommendationAppliedRef.current &&
+          goals.includes(recommendation.exam)
+        ) {
+          recommendationAppliedRef.current = true;
+          setActiveExamType(recommendation.exam);
+        } else if (!goals.includes(activeExamType)) setActiveExamType(goals[0]);
       }
 
       setWaecSubjects(await getSubjectsByExamType(supabase, "waec"));
@@ -106,11 +127,20 @@ export function PracticePage() {
     }
 
     void loadExamContext();
-  }, [activeExamType, setActiveExamType, supabase]);
+  }, [activeExamType, recommendation, setActiveExamType, supabase]);
 
   useEffect(() => {
     if (activeExamType === "jamb") {
-      setSelectedSubject(SUBJECTS[0]);
+      setSelectedSubject(
+        SUBJECTS.find(
+          (item) =>
+            recommendation?.exam === "jamb" &&
+            item.id === recommendation.subjectId,
+        ) ?? SUBJECTS[0],
+      );
+      setSelectedTopic(
+        recommendation?.exam === "jamb" ? recommendation.topic : null,
+      );
       setSelectedYear(null);
       setSelectedSource("all");
       setAvailableYears([]);
@@ -119,12 +149,21 @@ export function PracticePage() {
 
     const firstWaecSubject = waecSubjects[0];
     if (firstWaecSubject) {
-      setSelectedSubject({
-        id: firstWaecSubject.id,
-        label: firstWaecSubject.name,
-      });
+      const subject =
+        waecSubjects.find(
+          (item) =>
+            recommendation?.exam === "waec" &&
+            item.id === recommendation.subjectId,
+        ) ?? firstWaecSubject;
+      setSelectedSubject({ id: subject.id, label: subject.name });
+      setSelectedTopic(
+        recommendation?.exam === "waec" &&
+          subject.id === recommendation.subjectId
+          ? recommendation.topic
+          : null,
+      );
     }
-  }, [activeExamType, waecSubjects]);
+  }, [activeExamType, waecSubjects, recommendation]);
 
   useEffect(() => {
     if (activeExamType !== "waec" || !selectedSubject.id) return;
@@ -169,11 +208,17 @@ export function PracticePage() {
     setAnswered(0);
     setSelectedAnswers({});
     setSessionSaved(false);
+    sessionIdRef.current = null;
+    attemptedAnswerRef.current = null;
+    setSaveError(null);
     setLoadError(null);
 
     try {
       const nextQuestions =
-        activeExamType === "waec" && selectedYear && selectedSource === "all"
+        activeExamType === "waec" &&
+        selectedYear &&
+        selectedSource === "all" &&
+        !selectedTopic
           ? await getYearSessionQuestions(
               selectedSubject.id,
               25,
@@ -185,6 +230,7 @@ export function PracticePage() {
               25,
               activeExamType,
               selectedSource === "original" ? "original" : undefined,
+              selectedTopic ?? undefined,
             );
       if (requestId !== requestIdRef.current) return;
       setQuestions(nextQuestions);
@@ -205,6 +251,7 @@ export function PracticePage() {
     selectedSubject.id,
     selectedYear,
     selectedSource,
+    selectedTopic,
     waecSubjects,
     waecSubjectsLoaded,
   ]);
@@ -214,11 +261,36 @@ export function PracticePage() {
   }, [loadQuestions]);
 
   function handleSelect(optionKey: string) {
-    if (!submitted) setSelected(optionKey);
+    if (!submitted && !savingAnswer && !attemptedAnswerRef.current)
+      setSelected(optionKey);
   }
 
-  function handleSubmit() {
-    if (!selected || !question) return;
+  async function handleSubmit() {
+    if (!selected || !question || savingAnswer || submitted) return;
+    setSavingAnswer(true);
+    setSaveError(null);
+    attemptedAnswerRef.current = selected;
+    sessionIdRef.current ??= crypto.randomUUID();
+    let savedSessionId: string;
+    try {
+      savedSessionId = await recordPracticeAnswer(supabase, {
+        sessionId: sessionIdRef.current,
+        questionId: question.id,
+        selectedAnswer: selected,
+        isCorrect: selected === question.correct_answer,
+        examType: activeExamType,
+      });
+    } catch (error) {
+      setSaveError(
+        error instanceof Error
+          ? error.message
+          : "Could not save your answer. Please try again.",
+      );
+      setSavingAnswer(false);
+      return;
+    }
+    sessionIdRef.current = savedSessionId;
+    attemptedAnswerRef.current = null;
     const updatedAnswers = { ...selectedAnswers, [question.id]: selected };
     const nextAnswered = answered + 1;
     const nextScore = score + (selected === question.correct_answer ? 1 : 0);
@@ -230,14 +302,12 @@ export function PracticePage() {
     if (selected === question.correct_answer) setScore(nextScore);
 
     if (questionIndex === questions.length - 1) {
-      void savePracticeSession(updatedAnswers, nextAccuracy);
+      void finishPracticeSession(nextAccuracy);
     }
+    setSavingAnswer(false);
   }
 
-  async function savePracticeSession(
-    answers: Record<string, string>,
-    finalAccuracy: number,
-  ) {
+  async function finishPracticeSession(finalAccuracy: number) {
     if (sessionSaved) return;
     setSessionSaved(true);
 
@@ -245,20 +315,6 @@ export function PracticePage() {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) {
-      setSessionSaved(false);
-      return;
-    }
-
-    const sessionId = await saveSessionResult(supabase, {
-      userId: user.id,
-      mode: "practice",
-      score: finalAccuracy,
-      questions,
-      selectedAnswers: answers,
-      examType: activeExamType,
-    });
-
-    if (!sessionId) {
       setSessionSaved(false);
       return;
     }
@@ -310,6 +366,7 @@ export function PracticePage() {
           <Button
             key={examType}
             size="sm"
+            disabled={savingAnswer}
             variant={activeExamType === examType ? "default" : "ghost"}
             onClick={() => setActiveExamType(examType)}
           >
@@ -351,11 +408,13 @@ export function PracticePage() {
                 {subjectsForActiveExam.map((subject) => (
                   <Button
                     key={subject.id}
+                    disabled={savingAnswer}
                     variant={
                       selectedSubject.id === subject.id ? "default" : "outline"
                     }
                     onClick={() => {
                       setSelectedSubject(subject);
+                      setSelectedTopic(null);
                       setSelectedYear(null);
                     }}
                   >
@@ -376,11 +435,13 @@ export function PracticePage() {
                     id="question-source"
                     className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm dark:border-border-card dark:bg-card-surface dark:text-main"
                     value={selectedSource}
+                    disabled={savingAnswer}
                     onChange={(event) => {
                       setSelectedSource(
                         event.target.value as "all" | "original",
                       );
                       setSelectedYear(null);
+                      setSelectedTopic(null);
                     }}
                   >
                     <option value="all">All available questions</option>
@@ -403,11 +464,13 @@ export function PracticePage() {
                     id="practice-year"
                     className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm dark:border-border-card dark:bg-card-surface dark:text-main"
                     value={selectedYear ?? ""}
-                    onChange={(event) =>
+                    disabled={savingAnswer}
+                    onChange={(event) => {
+                      setSelectedTopic(null);
                       setSelectedYear(
                         event.target.value ? Number(event.target.value) : null,
-                      )
-                    }
+                      );
+                    }}
                   >
                     <option value="">
                       All years, including original questions
@@ -460,6 +523,21 @@ export function PracticePage() {
                   {questionIndex + 1} / {questions.length || "-"}
                 </Badge>
               </div>
+              {selectedTopic && (
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-200 bg-softblue p-3 text-sm dark:border-blue-500/40 dark:bg-blue-500/10">
+                  <span className="font-medium text-main">
+                    Focused topic: {cleanTopicLabel(selectedTopic)}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={savingAnswer}
+                    onClick={() => setSelectedTopic(null)}
+                  >
+                    Show all topics
+                  </Button>
+                </div>
+              )}
               <Progress value={progress} />
             </CardHeader>
 
@@ -478,10 +556,12 @@ export function PracticePage() {
                 <div className="py-20 text-center space-y-4">
                   <p className="text-lg font-semibold text-navy">
                     {questions.length === 0
-                      ? selectedSource === "original" &&
-                        activeExamType === "waec"
-                        ? `No original ${examLabel} questions are available for this subject yet.`
-                        : `No ${examLabel} questions are available for this subject${selectedYear ? ` in ${selectedYear}` : ""} yet.`
+                      ? selectedTopic
+                        ? `No questions are available for ${cleanTopicLabel(selectedTopic)} right now. Try all topics instead.`
+                        : selectedSource === "original" &&
+                            activeExamType === "waec"
+                          ? `No original ${examLabel} questions are available for this subject yet.`
+                          : `No ${examLabel} questions are available for this subject${selectedYear ? ` in ${selectedYear}` : ""} yet.`
                       : `You finished all ${selectedSubject.label} questions.`}
                   </p>
                   {questions.length > 0 && (
@@ -610,18 +690,29 @@ export function PracticePage() {
                       <Button
                         variant="outline"
                         onClick={previousQuestion}
-                        disabled={questionIndex === 0}
+                        disabled={questionIndex === 0 || savingAnswer}
                       >
                         Previous question
                       </Button>
                       {!submitted ? (
-                        <Button disabled={!selected} onClick={handleSubmit}>
-                          Submit answer
+                        <Button
+                          disabled={!selected || savingAnswer}
+                          onClick={handleSubmit}
+                        >
+                          {savingAnswer ? "Saving answer..." : "Submit answer"}
                         </Button>
                       ) : (
                         <Button onClick={nextQuestion}>Next question</Button>
                       )}
                     </div>
+                    {saveError && (
+                      <p
+                        role="alert"
+                        className="mt-3 text-sm text-red-600 dark:text-red-400"
+                      >
+                        {saveError}
+                      </p>
+                    )}
                   </motion.div>
                 </AnimatePresence>
               )}

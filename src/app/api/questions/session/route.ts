@@ -17,6 +17,7 @@ type SessionRequest = {
   limit?: number;
   year?: number;
   source?: "original";
+  topic?: string;
 };
 
 type StoredQuestion = {
@@ -49,9 +50,47 @@ function shuffle<T>(items: T[]) {
   const shuffled = [...items];
   for (let index = shuffled.length - 1; index > 0; index -= 1) {
     const swapIndex = Math.floor(Math.random() * (index + 1));
-    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+    [shuffled[index], shuffled[swapIndex]] = [
+      shuffled[swapIndex],
+      shuffled[index],
+    ];
   }
   return shuffled;
+}
+
+// Focused practice prefers questions this learner has not answered recently.
+// History failures never block a question set; they only remove this ordering.
+async function prioritizeUnseenQuestions(
+  questions: StoredQuestion[],
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  examType: "jamb" | "waec",
+) {
+  const shuffled = shuffle(questions);
+  if (shuffled.length === 0) return shuffled;
+  const { data: sessions, error: sessionError } = await supabase
+    .from("sessions")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("exam_type", examType)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (sessionError || !sessions?.length) return shuffled;
+  const { data: answers, error: answerError } = await supabase
+    .from("answers")
+    .select("question_id")
+    .in(
+      "session_id",
+      sessions.map((session) => session.id),
+    )
+    .order("created_at", { ascending: false })
+    .limit(1000);
+  if (answerError) return shuffled;
+  const seen = new Set((answers ?? []).map((answer) => answer.question_id));
+  return [
+    ...shuffled.filter((question) => !seen.has(question.id)),
+    ...shuffled.filter((question) => seen.has(question.id)),
+  ];
 }
 
 /**
@@ -175,6 +214,7 @@ async function handlePost(request: Request) {
   const requestedYear = body?.year;
   const year = Number.isInteger(requestedYear) ? requestedYear : undefined;
   const source = body?.source;
+  const topic = body?.topic;
   const limit = Math.min(
     Math.max(Number(body?.limit) || 25, 1),
     MAX_SESSION_QUESTIONS,
@@ -186,6 +226,11 @@ async function handlePost(request: Request) {
     ) ||
     (examType !== "jamb" && examType !== "waec") ||
     (source !== undefined && source !== "original") ||
+    (topic !== undefined &&
+      (typeof topic !== "string" ||
+        !topic.trim() ||
+        topic.length > 80 ||
+        /[<>]/.test(topic))) ||
     (requestedYear !== undefined &&
       (year === undefined || year < 1900 || year > 2100)) ||
     (source === "original" && year !== undefined)
@@ -222,19 +267,28 @@ async function handlePost(request: Request) {
     .eq("exam_type", subject.exam_type)
     .order("created_at", { ascending: false });
   if (year !== undefined) baseQuery.eq("year", year);
+  if (topic !== undefined) baseQuery.eq("topic", topic);
   if (source === "original") baseQuery.eq("source", "original");
   else if (!isPro) baseQuery.in("source", ["supabase", "original"]);
 
   if (!isPro) {
-    const { data, error } = await baseQuery.limit(Math.max(limit * 4, SESSION_POOL_SIZE));
+    const { data, error } = await baseQuery.limit(
+      Math.max(limit * 4, SESSION_POOL_SIZE),
+    );
     if (error)
       return noStoreJson(
         { error: "Could not load questions" },
         { status: 500 },
       );
+    const pool = ((data ?? []) as StoredQuestion[]).filter(
+      isRenderableQuestion,
+    );
+    const ordered =
+      topic === undefined
+        ? shuffle(pool)
+        : await prioritizeUnseenQuestions(pool, supabase, user.id, examType);
     return noStoreJson({
-      questions: shuffle((data ?? []) as StoredQuestion[])
-        .filter(isRenderableQuestion)
+      questions: ordered
         .map((question) =>
           randomizeOptionOrder({ ...question, exam_type: examType }),
         )
@@ -245,7 +299,7 @@ async function handlePost(request: Request) {
 
   // Refill only an underfilled subject. This writes a validated WAEC/JAMB page
   // to Supabase, then the query below serves the combined database bank.
-  if (source !== "original") {
+  if (source !== "original" && topic === undefined) {
     const { count: cachedCount, error: cachedCountError } = await admin
       .from("questions")
       .select("id", { count: "exact", head: true })
@@ -281,15 +335,22 @@ async function handlePost(request: Request) {
     .order("created_at", { ascending: false })
     .limit(Math.max(limit * 4, SESSION_POOL_SIZE));
   if (year !== undefined) query.eq("year", year);
+  if (topic !== undefined) query.eq("topic", topic);
   if (source === "original") query.eq("source", "original");
   const { data: questions, error: questionsError } = await query;
   if (questionsError) {
     return noStoreJson({ error: "Could not load questions" }, { status: 500 });
   }
 
+  const pool = ((questions ?? []) as StoredQuestion[]).filter(
+    isRenderableQuestion,
+  );
+  const ordered =
+    topic === undefined
+      ? shuffle(pool)
+      : await prioritizeUnseenQuestions(pool, supabase, user.id, examType);
   return noStoreJson({
-    questions: shuffle((questions ?? []) as StoredQuestion[])
-      .filter(isRenderableQuestion)
+    questions: ordered
       .map((question) =>
         randomizeOptionOrder({ ...question, exam_type: examType }),
       )
