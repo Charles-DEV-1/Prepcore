@@ -10,12 +10,20 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageSkeleton } from "@/components/layout/page-skeleton";
+import {
+  getDailyFlashcards,
+  getLagosDayNumber,
+} from "@/features/flashcards/daily-deck";
+import {
+  getDailyQuestionFlashcards,
+  type QuestionFlashcard,
+} from "@/services/api/flashcard-questions";
 
 type Flashcard = {
   id: string;
   front: string;
   back: string;
-  is_premium: boolean;
+  label?: string;
 };
 
 export function FlashcardsPage() {
@@ -26,8 +34,50 @@ export function FlashcardsPage() {
   const [flipped, setFlipped] = useState(false);
   const [loading, setLoading] = useState(true);
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
+  const [questionCards, setQuestionCards] = useState<QuestionFlashcard[]>([]);
+  const [questionCount, setQuestionCount] = useState(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [dayNumber, setDayNumber] = useState(() =>
+    getLagosDayNumber(new Date()),
+  );
 
-  const card = flashcards[index];
+  const dailyCards = useMemo(() => {
+    const manualCards = getDailyFlashcards(flashcards, dayNumber);
+    const combined: Flashcard[] = [];
+
+    for (
+      let index = 0;
+      index < Math.max(manualCards.length, questionCards.length);
+      index++
+    ) {
+      if (questionCards[index]) combined.push(questionCards[index]);
+      if (manualCards[index]) combined.push(manualCards[index]);
+    }
+
+    return combined;
+  }, [flashcards, questionCards, dayNumber]);
+  const card = dailyCards[index];
+
+  useEffect(() => {
+    function refreshDay() {
+      const today = getLagosDayNumber(new Date());
+      if (today !== dayNumber) {
+        setDayNumber(today);
+        setIndex(0);
+        setFlipped(false);
+      }
+    }
+
+    const interval = window.setInterval(refreshDay, 60_000);
+    window.addEventListener("focus", refreshDay);
+    document.addEventListener("visibilitychange", refreshDay);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshDay);
+      document.removeEventListener("visibilitychange", refreshDay);
+    };
+  }, [dayNumber]);
 
   useEffect(() => {
     if (isLoading) return;
@@ -36,30 +86,55 @@ export function FlashcardsPage() {
       return;
     }
 
+    let cancelled = false;
+
     async function loadFlashcards() {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("flashcards")
-        .select("*")
-        .order("created_at");
-      if (!error && data) setFlashcards(data);
+      const [manualResult, questionResult] = await Promise.allSettled([
+        supabase.rpc("get_pro_flashcards"),
+        getDailyQuestionFlashcards(supabase, dayNumber),
+      ]);
+      if (cancelled) return;
+
+      if (manualResult.status === "fulfilled" && !manualResult.value.error) {
+        setFlashcards(manualResult.value.data ?? []);
+      } else {
+        setFlashcards([]);
+      }
+      if (questionResult.status === "fulfilled") {
+        setQuestionCards(questionResult.value.cards);
+        setQuestionCount(questionResult.value.total);
+      } else {
+        setQuestionCards([]);
+        setQuestionCount(0);
+      }
+      setLoadError(
+        manualResult.status === "rejected" ||
+          (manualResult.status === "fulfilled" && manualResult.value.error) ||
+          questionResult.status === "rejected"
+          ? "Some flashcards could not be loaded. Please refresh to try again."
+          : null,
+      );
       setLoading(false);
     }
 
-    loadFlashcards();
-  }, [isPro, isLoading, supabase]);
+    void loadFlashcards();
+    return () => {
+      cancelled = true;
+    };
+  }, [isPro, isLoading, supabase, dayNumber]);
 
   function nextCard() {
     setFlipped(false);
     setTimeout(() => {
-      setIndex((prev) => (prev + 1 >= flashcards.length ? 0 : prev + 1));
+      setIndex((prev) => (prev + 1 >= dailyCards.length ? 0 : prev + 1));
     }, 200);
   }
 
   function prevCard() {
     setFlipped(false);
     setTimeout(() => {
-      setIndex((prev) => (prev === 0 ? flashcards.length - 1 : prev - 1));
+      setIndex((prev) => (prev === 0 ? dailyCards.length - 1 : prev - 1));
     }, 200);
   }
 
@@ -121,9 +196,8 @@ export function FlashcardsPage() {
                 Flashcards are Pro only
               </p>
               <p className="mt-2 text-sm text-slate-500 max-w-sm">
-                Unlock all flashcard decks for English, Maths, Physics,
-                Chemistry, Biology, and Economics. Flip cards, track what you
-                know, focus on what you don&apos;t.
+                Flip through a fresh daily mix of concept cards and original
+                exam questions across your subjects.
               </p>
             </div>
             <Button asChild size="lg">
@@ -150,7 +224,7 @@ export function FlashcardsPage() {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <p className="text-slate-500">
-          No flashcards found. Check your database.
+          {loadError ?? "No flashcards found. Check your database."}
         </p>
       </div>
     );
@@ -168,9 +242,17 @@ export function FlashcardsPage() {
         </div>
         <Badge className="border-green-200 bg-green-50 text-green-700">
           <Sparkles className="mr-1 h-3 w-3" />
-          PRO — {flashcards.length} cards
+          PRO — {dailyCards.length} today
         </Badge>
       </div>
+      {loadError && (
+        <p
+          role="alert"
+          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+        >
+          {loadError}
+        </p>
+      )}
 
       <div className="mx-auto flex max-w-2xl flex-col items-center">
         <AnimatePresence mode="wait">
@@ -208,12 +290,15 @@ export function FlashcardsPage() {
                   <CardContent className="flex h-full flex-col justify-between p-8">
                     <div className="flex items-center justify-between">
                       <Badge className="bg-primary/10 text-primary">
-                        {index + 1} / {flashcards.length}
+                        {index + 1} / {dailyCards.length}
                       </Badge>
-                      <RotateCcw className="h-5 w-5 text-slate-400" />
+                      <span className="flex items-center gap-2 text-xs text-slate-500">
+                        {card.label ?? "Concept card"}
+                        <RotateCcw className="h-5 w-5" />
+                      </span>
                     </div>
-                    <div className="flex flex-1 items-center justify-center">
-                      <h2 className="text-center text-3xl font-bold leading-snug text-navy">
+                    <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto py-4">
+                      <h2 className="whitespace-pre-line text-center text-lg font-bold leading-relaxed text-navy sm:text-2xl">
                         {card.front}
                       </h2>
                     </div>
@@ -237,8 +322,8 @@ export function FlashcardsPage() {
                     <Badge className="w-fit bg-white/20 text-white">
                       Answer
                     </Badge>
-                    <div className="flex flex-1 items-center justify-center">
-                      <p className="text-center text-2xl leading-relaxed">
+                    <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto py-4">
+                      <p className="whitespace-pre-line text-center text-lg leading-relaxed sm:text-xl">
                         {card.back}
                       </p>
                     </div>
@@ -264,7 +349,13 @@ export function FlashcardsPage() {
           </Button>
         </div>
         <p className="mt-4 text-sm text-slate-500">
-          Swipe left or right to navigate · {index + 1} of {flashcards.length}
+          Swipe left or right to navigate · {index + 1} of {dailyCards.length}{" "}
+          today
+        </p>
+        <p className="mt-1 text-center text-xs text-slate-400">
+          Today&apos;s set draws from {questionCount} original questions and{" "}
+          {flashcards.length} concept cards. It changes at midnight Nigeria
+          time; cards repeat after their bank is covered.
         </p>
       </div>
     </div>

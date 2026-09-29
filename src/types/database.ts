@@ -811,6 +811,10 @@ export type Database = {
       };
     };
     Functions: {
+      get_pro_flashcards: {
+        Args: Record<string, never>;
+        Returns: Array<Database["public"]["Tables"]["flashcards"]["Row"]>;
+      };
       apply_referral_code: {
         Args: { p_code: string };
         Returns: Json;
@@ -903,7 +907,11 @@ export type Database = {
           p_max_hits: number;
           p_window_seconds: number;
         };
-        Returns: Array<{ allowed: boolean; remaining: number; retry_after_seconds: number }>;
+        Returns: Array<{
+          allowed: boolean;
+          remaining: number;
+          retry_after_seconds: number;
+        }>;
       };
     };
     Enums: {
