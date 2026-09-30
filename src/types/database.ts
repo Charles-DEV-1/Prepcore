@@ -811,6 +811,21 @@ export type Database = {
       };
     };
     Functions: {
+      admin_overview_metrics: {
+        Args: Record<string, never>;
+        Returns: Array<{
+          total_users: number;
+          profile_users: number;
+          active_users_7d: number;
+          practice_sessions: number;
+          paid_users: number;
+          revenue_ngn: number;
+          new_users_7d: number;
+          returning_users_7d: number;
+          sessions_today: number;
+          pending_reports: number;
+        }>;
+      };
       record_practice_answer: {
         Args: {
           p_session_id: string | null;
