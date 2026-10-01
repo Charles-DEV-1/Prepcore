@@ -143,6 +143,29 @@ export async function verifyFlutterwaveTransaction(transactionId: string) {
   );
 }
 
+export async function verifyFlutterwaveTransactionByReference(txRef: string) {
+  return flutterwaveFetch<FlutterwaveVerificationResponse>(
+    `/transactions/verify_by_reference?tx_ref=${encodeURIComponent(txRef)}`,
+    { method: "GET" },
+  );
+}
+
+export function isTrustedFlutterwaveCheckoutUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return (
+      url.protocol === "https:" &&
+      url.hostname === "checkout.flutterwave.com" &&
+      url.port === "" &&
+      url.username === "" &&
+      url.password === "" &&
+      url.pathname.startsWith("/v3/hosted/pay/")
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function verifyFlutterwaveWebhookSignature(
   rawBody: string,
   headers: Headers,

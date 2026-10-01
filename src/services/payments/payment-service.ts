@@ -9,7 +9,9 @@ import { createServiceRoleClient } from "@/services/supabase/admin";
 import {
   createFlutterwaveCheckout,
   createTxRef,
+  isTrustedFlutterwaveCheckoutUrl,
   verifyFlutterwaveTransaction,
+  verifyFlutterwaveTransactionByReference,
   type FlutterwaveVerificationResponse,
 } from "@/services/payments/flutterwave";
 
@@ -21,8 +23,9 @@ type CreatePaymentInput = {
   planKey?: PaymentPlanKey;
 };
 
-type VerificationResult = {
+export type VerificationResult = {
   success: boolean;
+  state: "success" | "pending" | "failed";
   txRef?: string;
   alreadyProcessed?: boolean;
   error?: string;
@@ -49,56 +52,87 @@ function isVerifiedSuccessfulPayment(
 export async function createPayment(input: CreatePaymentInput) {
   const plan = getPaymentPlan(input.planKey);
   const txRef = createTxRef(input.userId);
+  const redirectUrl = getPaymentRedirectUrl(txRef);
   const idempotencyKey = createIdempotencyKey(input.userId, txRef);
   const supabase = createServiceRoleClient();
 
-  const { error: insertError } = await supabase.from("payments").insert({
-    user_id: input.userId,
-    flutterwave_tx_ref: txRef,
-    tx_ref: txRef,
-    plan_key: plan.key,
-    plan_name: plan.name,
-    amount: plan.amount,
-    currency: plan.currency,
-    status: "pending",
-    customer_email: input.email,
-    metadata: {
-      plan_name: plan.name,
-      duration_days: plan.durationDays,
-    },
-    idempotency_key: idempotencyKey,
-  } as never);
-
-  if (insertError) {
-    console.error("payment_create_insert_failed", insertError);
-    throw new Error("Could not create payment record.");
+  const { data: reservation, error: reserveError } = await supabase.rpc(
+    "reserve_payment_checkout",
+    {
+      p_user_id: input.userId,
+      p_tx_ref: txRef,
+      p_idempotency_key: idempotencyKey,
+      p_plan_key: plan.key,
+      p_plan_name: plan.name,
+      p_amount: plan.amount,
+      p_currency: plan.currency,
+      p_customer_email: input.email,
+      p_metadata: { plan_name: plan.name, duration_days: plan.durationDays },
+    } as never,
+  );
+  if (reserveError) {
+    console.error("payment_reservation_failed", reserveError);
+    throw new Error("Could not reserve payment checkout.");
+  }
+  const reserved = reservation as {
+    created?: boolean;
+    tx_ref?: string;
+    checkout_url?: string | null;
+  } | null;
+  if (!reserved?.tx_ref) throw new Error("Could not reserve payment checkout.");
+  if (!reserved.created) {
+    if (reserved.checkout_url) {
+      if (!isTrustedFlutterwaveCheckoutUrl(reserved.checkout_url)) {
+        throw new Error("Stored checkout link is invalid. Contact support.");
+      }
+      return {
+        state: "resume" as const,
+        txRef: reserved.tx_ref,
+        checkoutUrl: reserved.checkout_url,
+        plan,
+      };
+    }
+    return {
+      state: "pending" as const,
+      txRef: reserved.tx_ref,
+      checkoutUrl: null,
+      plan,
+    };
   }
 
-  const checkout = await createFlutterwaveCheckout({
-    txRef,
-    amount: plan.amount,
-    currency: plan.currency,
-    redirectUrl: getPaymentRedirectUrl(txRef),
-    customer: {
-      email: input.email,
-      name: input.name,
-      phonenumber: input.phone,
-    },
-    customizations: {
-      title: siteConfig.name,
-      description: plan.description,
-      logo: `${siteConfig.url}/favicons/android-chrome-192x192.png`,
-    },
-    meta: {
-      user_id: input.userId,
-      plan_key: plan.key,
-      idempotency_key: idempotencyKey,
-    },
-  });
+  let checkout;
+  try {
+    checkout = await createFlutterwaveCheckout({
+      txRef,
+      amount: plan.amount,
+      currency: plan.currency,
+      redirectUrl,
+      customer: {
+        email: input.email,
+        name: input.name,
+        phonenumber: input.phone,
+      },
+      customizations: {
+        title: siteConfig.name,
+        description: plan.description,
+        logo: `${siteConfig.url}/favicons/android-chrome-192x192.png`,
+      },
+      meta: {
+        user_id: input.userId,
+        plan_key: plan.key,
+        idempotency_key: idempotencyKey,
+      },
+    });
+  } catch (error) {
+    // A timeout is not proof that Flutterwave rejected the request. Keep the
+    // reserved reference for reconciliation; never issue a second one here.
+    console.error("payment_checkout_uncertain", error);
+    return { state: "pending" as const, txRef, checkoutUrl: null, plan };
+  }
 
   const checkoutUrl = checkout.data?.link;
   if (checkout.status !== "success" || !checkoutUrl) {
-    await supabase
+    const { error: failureUpdateError } = await supabase
       .from("payments")
       .update({
         status: "failed",
@@ -107,7 +141,18 @@ export async function createPayment(input: CreatePaymentInput) {
         provider_response: checkout,
       } as never)
       .eq("tx_ref", txRef);
+    if (failureUpdateError) {
+      console.error(
+        "payment_checkout_failure_update_failed",
+        failureUpdateError,
+      );
+      return { state: "pending" as const, txRef, checkoutUrl: null, plan };
+    }
     throw new Error("Could not start Flutterwave checkout.");
+  }
+  if (!isTrustedFlutterwaveCheckoutUrl(checkoutUrl)) {
+    console.error("payment_checkout_untrusted_url", { txRef });
+    throw new Error("Flutterwave returned an invalid checkout link.");
   }
 
   const { error: updateError } = await supabase
@@ -121,54 +166,120 @@ export async function createPayment(input: CreatePaymentInput) {
 
   if (updateError) {
     console.error("payment_checkout_update_failed", updateError);
+    throw new Error(
+      "Could not save checkout link. Check payment status before retrying.",
+    );
   }
 
-  return { txRef, checkoutUrl, plan };
+  return { state: "ready" as const, txRef, checkoutUrl, plan };
 }
 
 export async function verifyAndActivatePayment(
   transactionId: string,
   expected?: { userId?: string; txRef?: string },
 ): Promise<VerificationResult> {
-  const supabase = createServiceRoleClient();
-
   if (expected?.userId && expected.txRef) {
-    const { data: ownedPayment, error: ownedPaymentError } = await supabase
+    const supabase = createServiceRoleClient();
+    const { data, error } = await supabase
       .from("payments")
-      .select("tx_ref")
+      .select("id")
       .eq("tx_ref", expected.txRef)
       .eq("user_id", expected.userId)
       .maybeSingle();
-
-    if (ownedPaymentError || !ownedPayment) {
-      console.warn("payment_verify_ownership_failed", {
-        txRef: expected.txRef,
-        userId: expected.userId,
-        ownedPaymentError,
-      });
+    if (error)
       return {
         success: false,
-        txRef: expected.txRef,
-        error: "payment_not_found",
+        state: "pending",
+        error: "verification_unavailable",
+      };
+    if (!data)
+      return { success: false, state: "failed", error: "payment_not_found" };
+  }
+  let verification: FlutterwaveVerificationResponse;
+  try {
+    verification = await verifyFlutterwaveTransaction(transactionId);
+  } catch (error) {
+    console.error("payment_provider_verify_unavailable", error);
+    return {
+      success: false,
+      state: "pending",
+      txRef: expected?.txRef,
+      error: "verification_unavailable",
+    };
+  }
+  return activateVerifiedPayment(verification, expected);
+}
+
+export async function verifyAndActivatePaymentByReference(
+  txRef: string,
+  userId?: string,
+): Promise<VerificationResult> {
+  const supabase = createServiceRoleClient();
+  if (userId) {
+    const { data: ownedPayment, error: ownedPaymentError } = await supabase
+      .from("payments")
+      .select("tx_ref, status, processed_at")
+      .eq("tx_ref", txRef)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (ownedPaymentError) {
+      console.error("payment_ownership_lookup_failed", ownedPaymentError);
+      return {
+        success: false,
+        state: "pending",
+        txRef,
+        error: "verification_unavailable",
       };
     }
+    if (!ownedPayment) {
+      return { success: false, state: "failed", error: "payment_not_found" };
+    }
+    if (ownedPayment.status === "successful" && ownedPayment.processed_at) {
+      return { success: true, state: "success", txRef, alreadyProcessed: true };
+    }
   }
+  let verification: FlutterwaveVerificationResponse;
+  try {
+    verification = await verifyFlutterwaveTransactionByReference(txRef);
+  } catch (error) {
+    console.warn("payment_reference_verify_unavailable", { txRef, error });
+    return {
+      success: false,
+      state: "pending",
+      txRef,
+      error: "verification_unavailable",
+    };
+  }
+  return activateVerifiedPayment(verification, { userId, txRef });
+}
 
-  const verification = await verifyFlutterwaveTransaction(transactionId);
+async function activateVerifiedPayment(
+  verification: FlutterwaveVerificationResponse,
+  expected?: { userId?: string; txRef?: string },
+): Promise<VerificationResult> {
+  const supabase = createServiceRoleClient();
   const data = verification.data;
 
   if (!data?.tx_ref) {
-    console.warn("payment_verify_missing_tx_ref", { transactionId });
-    return { success: false, error: "missing_tx_ref" };
+    return {
+      success: false,
+      state: "pending",
+      txRef: expected?.txRef,
+      error: "missing_tx_ref",
+    };
   }
 
   if (expected?.txRef && data.tx_ref !== expected.txRef) {
     console.warn("payment_verify_tx_ref_mismatch", {
       expectedTxRef: expected.txRef,
       actualTxRef: data.tx_ref,
-      transactionId,
     });
-    return { success: false, txRef: expected.txRef, error: "tx_ref_mismatch" };
+    return {
+      success: false,
+      state: "failed",
+      txRef: expected.txRef,
+      error: "tx_ref_mismatch",
+    };
   }
 
   const { data: payment, error: paymentError } = await supabase
@@ -181,20 +292,54 @@ export async function verifyAndActivatePayment(
 
   if (paymentError || !payment) {
     console.warn("payment_verify_unknown_tx_ref", {
-      transactionId,
       txRef: data.tx_ref,
       paymentError,
     });
-    return { success: false, txRef: data.tx_ref, error: "payment_not_found" };
+    return {
+      success: false,
+      state: "pending",
+      txRef: data.tx_ref,
+      error: paymentError ? "verification_unavailable" : "payment_not_found",
+    };
   }
 
   if (expected?.userId && payment.user_id !== expected.userId) {
     console.warn("payment_verify_user_mismatch", {
-      transactionId,
       txRef: data.tx_ref,
       expectedUserId: expected.userId,
     });
-    return { success: false, txRef: data.tx_ref, error: "payment_not_found" };
+    return {
+      success: false,
+      state: "failed",
+      txRef: data.tx_ref,
+      error: "payment_not_found",
+    };
+  }
+
+  if (payment.status === "successful" && payment.processed_at) {
+    return {
+      success: true,
+      state: "success",
+      txRef: data.tx_ref,
+      alreadyProcessed: true,
+    };
+  }
+
+  const detailsMatch =
+    data.tx_ref === payment.tx_ref &&
+    Number(data.amount) === Number(payment.amount) &&
+    data.currency === payment.currency;
+  if (!detailsMatch || !Number.isSafeInteger(data.id) || data.id <= 0) {
+    console.error("payment_provider_details_mismatch", {
+      txRef: payment.tx_ref,
+      providerId: data.id,
+    });
+    return {
+      success: false,
+      state: "pending",
+      txRef: payment.tx_ref,
+      error: "details_mismatch",
+    };
   }
 
   if (
@@ -204,19 +349,44 @@ export async function verifyAndActivatePayment(
       currency: payment.currency,
     })
   ) {
-    await supabase
+    const terminal =
+      verification.status === "success" &&
+      (data.status === "failed" || data.status === "cancelled");
+    if (!terminal) {
+      return {
+        success: false,
+        state: "pending",
+        txRef: data.tx_ref,
+        error: "payment_pending",
+      };
+    }
+    const { error: updateError } = await supabase
       .from("payments")
       .update({
         status: data.status === "cancelled" ? "cancelled" : "failed",
         failure_reason: verification.message || "Verification failed.",
-        flutterwave_transaction_id: data.id,
         provider_response: verification,
         verification_attempts: Number(payment.verification_attempts ?? 0) + 1,
         verified_at: new Date().toISOString(),
       } as never)
-      .eq("tx_ref", data.tx_ref);
+      .eq("tx_ref", data.tx_ref)
+      .neq("status", "successful");
+    if (updateError) {
+      console.error("payment_terminal_update_failed", updateError);
+      return {
+        success: false,
+        state: "pending",
+        txRef: data.tx_ref,
+        error: "processing_failed",
+      };
+    }
 
-    return { success: false, txRef: data.tx_ref, error: "verification_failed" };
+    return {
+      success: false,
+      state: "failed",
+      txRef: data.tx_ref,
+      error: data.status,
+    };
   }
 
   const { data: processResult, error: processError } = await supabase.rpc(
@@ -231,7 +401,12 @@ export async function verifyAndActivatePayment(
 
   if (processError) {
     console.error("payment_process_failed", processError);
-    return { success: false, txRef: data.tx_ref, error: "processing_failed" };
+    return {
+      success: false,
+      state: "pending",
+      txRef: data.tx_ref,
+      error: "processing_failed",
+    };
   }
 
   const result = processResult as {
@@ -256,6 +431,7 @@ export async function verifyAndActivatePayment(
 
   return {
     success: result?.success === true,
+    state: result?.success === true ? "success" : "pending",
     txRef: data.tx_ref,
     alreadyProcessed: result?.already_processed === true,
     error: result?.error,
@@ -276,17 +452,29 @@ export async function rememberWebhookEvent(
     payload,
   } as never);
 
-  if (error?.code === "23505") return false;
+  if (error?.code === "23505") {
+    const { data, error: lookupError } = await supabase
+      .from("payment_webhook_events")
+      .select("processed_at")
+      .eq("provider", "flutterwave")
+      .eq("event_key", eventKey)
+      .single();
+    if (lookupError) throw lookupError;
+    return !data?.processed_at;
+  }
   if (error) {
     console.error("payment_webhook_event_insert_failed", error);
+    throw error;
   }
   return true;
 }
 
 export async function markWebhookEventProcessed(eventKey: string) {
   const supabase = createServiceRoleClient();
-  await supabase
+  const { error } = await supabase
     .from("payment_webhook_events")
     .update({ processed_at: new Date().toISOString() } as never)
+    .eq("provider", "flutterwave")
     .eq("event_key", eventKey);
+  if (error) throw error;
 }

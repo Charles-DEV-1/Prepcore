@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Loader2, XCircle } from "lucide-react";
+import { CheckCircle2, Clock3, Loader2, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -10,24 +10,17 @@ import { Card, CardContent } from "@/components/ui/card";
 type VerifyState =
   | { status: "checking" }
   | { status: "success"; txRef?: string }
+  | { status: "pending"; message: string }
   | { status: "failed"; message: string };
 
 export default function PaymentSuccessPage() {
   const searchParams = useSearchParams();
   const [state, setState] = useState<VerifyState>({ status: "checking" });
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
-    const transactionId =
-      searchParams.get("transaction_id") ?? searchParams.get("id");
     const txRef = searchParams.get("tx_ref");
 
-    if (!transactionId) {
-      setState({
-        status: "failed",
-        message: "Flutterwave did not return a transaction ID.",
-      });
-      return;
-    }
     if (!txRef) {
       setState({
         status: "failed",
@@ -35,41 +28,62 @@ export default function PaymentSuccessPage() {
       });
       return;
     }
-    const verifiedTransactionId = transactionId;
-    const verifiedTxRef = txRef;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const body = { tx_ref: txRef };
 
-    async function verifyPayment() {
+    async function verifyPayment(attempt: number) {
       try {
-        const response = await fetch(
-          `/api/payments/verify?transaction_id=${encodeURIComponent(
-            verifiedTransactionId,
-          )}&tx_ref=${encodeURIComponent(verifiedTxRef)}`,
-          { cache: "no-store" },
-        );
+        const response = await fetch("/api/payments/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          cache: "no-store",
+        });
         const data = (await response.json()) as {
           success?: boolean;
+          state?: "success" | "pending" | "failed";
           txRef?: string;
           error?: string;
         };
-
-        if (!response.ok || !data.success) {
-          throw new Error(data.error ?? "Payment verification failed.");
+        if (cancelled) return;
+        if (data.success) {
+          setState({ status: "success", txRef: data.txRef });
+          return;
         }
-
-        setState({ status: "success", txRef: data.txRef });
-      } catch (error) {
+        if (data.state === "failed") {
+          setState({
+            status: "failed",
+            message:
+              "Flutterwave has not confirmed this payment. If your bank debited you, keep your payment reference and contact support; do not pay again yet.",
+          });
+          return;
+        }
         setState({
-          status: "failed",
+          status: "pending",
           message:
-            error instanceof Error
-              ? error.message
-              : "Payment verification failed.",
+            "We have not confirmed your payment yet. Please do not start another payment while we check it.",
         });
+      } catch (error) {
+        if (cancelled) return;
+        console.warn("payment_status_check_unavailable", error);
+        setState({
+          status: "pending",
+          message:
+            "Our status check is temporarily unavailable. Your payment is not marked as failed. Please check again shortly; do not pay twice.",
+        });
+      }
+      if (!cancelled && attempt < 5) {
+        timer = setTimeout(() => void verifyPayment(attempt + 1), 10_000);
       }
     }
 
-    void verifyPayment();
-  }, [searchParams]);
+    void verifyPayment(0);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [searchParams, retry]);
 
   return (
     <div className="mx-auto flex min-h-[60vh] max-w-xl items-center">
@@ -104,6 +118,37 @@ export default function PaymentSuccessPage() {
             </>
           )}
 
+          {state.status === "pending" && (
+            <>
+              <Clock3 className="mx-auto h-12 w-12 text-amber-500" />
+              <h1 className="mt-4 text-2xl font-bold text-navy dark:text-slate-100">
+                Payment being checked
+              </h1>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                {state.message}
+              </p>
+              <p className="mt-3 break-all text-xs text-slate-500">
+                Reference: {searchParams.get("tx_ref")}
+              </p>
+              <a
+                className="mt-3 inline-block text-sm font-semibold text-primary underline"
+                href={`mailto:hello@prepcore.ng?subject=${encodeURIComponent(`Payment help: ${searchParams.get("tx_ref") ?? "unknown"}`)}`}
+              >
+                Contact payment support
+              </a>
+              <Button
+                className="mt-6"
+                variant="outline"
+                onClick={() => {
+                  setState({ status: "checking" });
+                  setRetry((value) => value + 1);
+                }}
+              >
+                Check again
+              </Button>
+            </>
+          )}
+
           {state.status === "failed" && (
             <>
               <XCircle className="mx-auto h-12 w-12 text-red-500" />
@@ -111,9 +156,26 @@ export default function PaymentSuccessPage() {
                 Verification failed
               </h1>
               <p className="mt-2 text-sm text-slate-500">{state.message}</p>
+              {searchParams.get("tx_ref") && (
+                <p className="mt-3 break-all text-xs text-slate-500">
+                  Reference: {searchParams.get("tx_ref")}
+                </p>
+              )}
+              <a
+                className="mt-3 inline-block text-sm font-semibold text-primary underline"
+                href={`mailto:hello@prepcore.ng?subject=${encodeURIComponent(`Payment help: ${searchParams.get("tx_ref") ?? "unknown"}`)}`}
+              >
+                Contact payment support
+              </a>
               <div className="mt-6 flex justify-center gap-3">
-                <Button asChild variant="outline">
-                  <Link href="/upgrade">Try again</Link>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setState({ status: "checking" });
+                    setRetry((value) => value + 1);
+                  }}
+                >
+                  Check status again
                 </Button>
                 <Button asChild>
                   <Link href="/dashboard">Dashboard</Link>

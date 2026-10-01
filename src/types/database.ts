@@ -422,6 +422,7 @@ export type Database = {
           processed_at: string | null;
           failure_reason: string | null;
           idempotency_key: string;
+          last_reconciled_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -881,6 +882,20 @@ export type Database = {
           p_flutterwave_transaction_id: number;
           p_provider_response: Json;
           p_verified_at?: string;
+        };
+        Returns: Json;
+      };
+      reserve_payment_checkout: {
+        Args: {
+          p_user_id: string;
+          p_tx_ref: string;
+          p_idempotency_key: string;
+          p_plan_key: string;
+          p_plan_name: string;
+          p_amount: number;
+          p_currency: string;
+          p_customer_email: string;
+          p_metadata: Json;
         };
         Returns: Json;
       };

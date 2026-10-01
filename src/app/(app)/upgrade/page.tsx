@@ -39,6 +39,8 @@ export default function UpgradePage() {
   const [referral, setReferral] = useState<UserReferral | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [error, setError] = useState("");
+  const [pendingRef, setPendingRef] = useState<string | null>(null);
+  const [resumeUrl, setResumeUrl] = useState<string | null>(null);
   const reducedMotion = useReducedMotion();
 
   useEffect(() => {
@@ -48,6 +50,8 @@ export default function UpgradePage() {
   async function startCheckout() {
     setCheckoutLoading(true);
     setError("");
+    setPendingRef(null);
+    setResumeUrl(null);
 
     try {
       const response = await fetch("/api/payments/create", {
@@ -57,12 +61,35 @@ export default function UpgradePage() {
       });
       const data = (await response.json()) as {
         checkout_url?: string;
+        tx_ref?: string;
+        state?: "ready" | "resume" | "pending";
         error?: string;
       };
 
-      if (!response.ok || !data.checkout_url) {
+      if (!response.ok) {
         throw new Error(data.error ?? "Could not start payment.");
       }
+      if (data.state === "pending" && data.tx_ref) {
+        setPendingRef(data.tx_ref);
+        setError(
+          "An earlier checkout is still being prepared or checked. Please check its status before trying to pay again.",
+        );
+        setCheckoutLoading(false);
+        return;
+      }
+      if (data.state === "resume" && data.tx_ref && data.checkout_url) {
+        setPendingRef(data.tx_ref);
+        setResumeUrl(data.checkout_url);
+        setError(
+          "An earlier checkout is still open. Check its status first if your bank has debited you. Only resume checkout if you have not paid.",
+        );
+        setCheckoutLoading(false);
+        return;
+      }
+      if (!data.checkout_url)
+        throw new Error(
+          "Checkout link is unavailable. Please check your payment status.",
+        );
 
       window.location.href = data.checkout_url;
     } catch (checkoutError) {
@@ -156,13 +183,32 @@ export default function UpgradePage() {
 
       <div className="grid gap-3 sm:grid-cols-3">
         {[
-          { title: "Practise like exam day", detail: "Work through full timed JAMB and WAEC mock exams with question maps and detailed results." },
-          { title: "Remember more", detail: "Use flashcards to revisit key ideas between practice sessions." },
-          { title: "Learn from your results", detail: "See detailed mock-exam results and review missed answers after a realistic timed session." },
+          {
+            title: "Practise like exam day",
+            detail:
+              "Work through full timed JAMB and WAEC mock exams with question maps and detailed results.",
+          },
+          {
+            title: "Remember more",
+            detail:
+              "Use flashcards to revisit key ideas between practice sessions.",
+          },
+          {
+            title: "Learn from your results",
+            detail:
+              "See detailed mock-exam results and review missed answers after a realistic timed session.",
+          },
         ].map((benefit) => (
-          <div key={benefit.title} className="rounded-2xl border border-border bg-white p-5 dark:border-border-card dark:bg-card-surface">
-            <h2 className="font-semibold text-slate-900 dark:text-slate-100">{benefit.title}</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">{benefit.detail}</p>
+          <div
+            key={benefit.title}
+            className="rounded-2xl border border-border bg-white p-5 dark:border-border-card dark:bg-card-surface"
+          >
+            <h2 className="font-semibold text-slate-900 dark:text-slate-100">
+              {benefit.title}
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">
+              {benefit.detail}
+            </p>
           </div>
         ))}
       </div>
@@ -229,7 +275,9 @@ export default function UpgradePage() {
                 <Sparkles className="h-5 w-5 text-primary" />
                 Pro
               </CardTitle>
-              <p className="text-4xl font-bold text-navy">₦{proPlan.amount.toLocaleString("en-NG")}</p>
+              <p className="text-4xl font-bold text-navy">
+                ₦{proPlan.amount.toLocaleString("en-NG")}
+              </p>
               <p className="text-sm text-slate-500">One-time yearly access</p>
             </CardHeader>
             <CardContent>
@@ -261,9 +309,25 @@ export default function UpgradePage() {
               </div>
 
               {error && (
-                <p className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
-                  {error}
-                </p>
+                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+                  <p>{error}</p>
+                  {pendingRef && (
+                    <Link
+                      className="mt-2 inline-block font-semibold underline"
+                      href={`/upgrade/success?tx_ref=${encodeURIComponent(pendingRef)}`}
+                    >
+                      Check payment status
+                    </Link>
+                  )}
+                  {resumeUrl && (
+                    <a
+                      className="ml-4 mt-2 inline-block font-semibold underline"
+                      href={resumeUrl}
+                    >
+                      Resume original checkout
+                    </a>
+                  )}
+                </div>
               )}
 
               <Button

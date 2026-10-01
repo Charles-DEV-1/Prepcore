@@ -1,5 +1,9 @@
 import { getClientIp, sharedRateLimit } from "@/lib/rate-limit";
-import { hasTrustedOrigin, noStoreJson, readSafeJson } from "@/lib/api-security";
+import {
+  hasTrustedOrigin,
+  noStoreJson,
+  readSafeJson,
+} from "@/lib/api-security";
 import { createClient } from "@/services/supabase/server";
 import { createPayment } from "@/services/payments/payment-service";
 import {
@@ -9,6 +13,7 @@ import {
 } from "@/config/payments";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   try {
@@ -58,9 +63,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = (await readSafeJson<{
-      plan_key?: string;
-    }>(request)) ?? {};
+    const body =
+      (await readSafeJson<{
+        plan_key?: string;
+      }>(request)) ?? {};
     const planKey =
       body.plan_key && body.plan_key in PAYMENT_PLANS
         ? (body.plan_key as PaymentPlanKey)
@@ -82,11 +88,15 @@ export async function POST(request: Request) {
       planKey,
     });
 
-    return noStoreJson({
-      tx_ref: payment.txRef,
-      checkout_url: payment.checkoutUrl,
-      plan: payment.plan,
-    });
+    return noStoreJson(
+      {
+        tx_ref: payment.txRef,
+        checkout_url: payment.checkoutUrl,
+        state: payment.state,
+        plan: payment.plan,
+      },
+      { status: payment.state === "pending" ? 202 : 200 },
+    );
   } catch (error) {
     console.error("payments_create_route_failed", error);
     return noStoreJson(

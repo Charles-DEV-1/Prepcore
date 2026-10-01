@@ -1,26 +1,34 @@
 import { getClientIp, sharedRateLimit } from "@/lib/rate-limit";
-import { noStoreJson } from "@/lib/api-security";
+import {
+  hasTrustedOrigin,
+  noStoreJson,
+  readSafeJson,
+} from "@/lib/api-security";
 import { createClient } from "@/services/supabase/server";
-import { verifyAndActivatePayment } from "@/services/payments/payment-service";
+import { verifyAndActivatePaymentByReference } from "@/services/payments/payment-service";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
-export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const transactionId =
-    url.searchParams.get("transaction_id") ?? url.searchParams.get("id");
-  const txRef = url.searchParams.get("tx_ref");
-
-  if (!transactionId) {
+export async function POST(request: Request) {
+  if (!hasTrustedOrigin(request)) {
     return noStoreJson(
-      { success: false, error: "Missing transaction_id." },
-      { status: 400 },
+      { success: false, error: "Invalid request origin." },
+      { status: 403 },
     );
   }
+  const body = await readSafeJson<{ tx_ref?: string }>(request);
+  const txRef = body?.tx_ref;
 
   if (!txRef) {
     return noStoreJson(
       { success: false, error: "Missing tx_ref." },
+      { status: 400 },
+    );
+  }
+  if (typeof txRef !== "string" || txRef.length > 120) {
+    return noStoreJson(
+      { success: false, error: "Invalid payment reference." },
       { status: 400 },
     );
   }
@@ -72,11 +80,10 @@ export async function GET(request: Request) {
       );
     }
 
-    const result = await verifyAndActivatePayment(transactionId, {
-      userId: user.id,
-      txRef,
+    const result = await verifyAndActivatePaymentByReference(txRef, user.id);
+    return noStoreJson(result, {
+      status: result.state === "failed" ? 400 : 200,
     });
-    return noStoreJson(result, { status: result.success ? 200 : 400 });
   } catch (error) {
     console.error("payments_verify_route_failed", error);
     return noStoreJson(

@@ -34,6 +34,9 @@ export function getPaymentPlan(planKey = DEFAULT_PAYMENT_PLAN_KEY) {
 
 export function getPaymentRedirectUrl(txRef: string) {
   const url = new URL("/upgrade/success", siteConfig.url);
+  if (process.env.NODE_ENV === "production" && url.protocol !== "https:") {
+    throw new Error("Payment redirects require HTTPS in production.");
+  }
   url.searchParams.set("tx_ref", txRef);
   return url.toString();
 }
