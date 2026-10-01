@@ -12,6 +12,14 @@ shows a non-blocking card. `dismiss_my_in_app_message` writes a receipt keyed by
 user and message, so dismissing it on one device dismisses it everywhere. The
 dashboard feedback modal is suppressed for that visit when the launch card appears.
 
+The launch campaign is delayed by `20261001100000_delay_pro_launch_message.sql`:
+it becomes eligible after **three practice sessions with at least five saved
+answers each**, or after **seven days since signup plus practice on two separate
+Lagos dates**. Account age alone is not enough. The rule is checked in the
+database whenever the dashboard asks for a message; a new signup does not see
+the announcement on their first visit. The post-practice campaign has no age
+threshold and is shown only after a result with missed answers.
+
 ## After practice
 
 The practice completion screen uses the questions and shuffled answer choices that
@@ -29,8 +37,10 @@ answer letters remain accurate after a reload.
 
 ## Operations and release
 
-Apply `20261001090000_in_app_messages.sql` before deploying the UI. It is a new,
-forward-only migration; do not re-run older migrations. To pause a campaign, set
+Apply both `20261001090000_in_app_messages.sql` and the subsequent
+`20261001100000_delay_pro_launch_message.sql` before deploying the UI. The
+second migration changes the eligibility of an already-installed campaign;
+do not edit or re-run older migrations. To pause a campaign, set
 its status to `draft` with an authorized database administrator. Campaign copy and
 CTA paths are stored in the database, while the price shown in both cards comes
 from the application payment-plan configuration. No admin campaign editor is
