@@ -28,6 +28,7 @@ import { PageSkeleton } from "@/components/layout/page-skeleton";
 import type { ExamGoal } from "@/types/app";
 import type { ExamType } from "@/types/app";
 import { cleanTopicLabel } from "@/lib/study-recommendations";
+import { PracticeResultInvitation } from "@/components/announcements/practice-result-invitation";
 
 // Prepcore — Dark Mode
 const SUBJECTS = [
@@ -76,6 +77,7 @@ export function PracticePage({
   const [sessionSaved, setSessionSaved] = useState(false);
   const [savingAnswer, setSavingAnswer] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [reviewPage, setReviewPage] = useState(1);
   const [selectedTopic, setSelectedTopic] = useState<string | null>(
     recommendation?.topic ?? null,
   );
@@ -85,6 +87,7 @@ export function PracticePage({
   const requestIdRef = useRef(0);
   const sessionIdRef = useRef<string | null>(null);
   const attemptedAnswerRef = useRef<string | null>(null);
+  const reviewTopRef = useRef<HTMLHeadingElement | null>(null);
   const recommendationAppliedRef = useRef(false);
 
   const supabase = useMemo(() => createClient(), []);
@@ -211,6 +214,7 @@ export function PracticePage({
     sessionIdRef.current = null;
     attemptedAnswerRef.current = null;
     setSaveError(null);
+    setReviewPage(1);
     setLoadError(null);
 
     try {
@@ -347,12 +351,37 @@ export function PracticePage({
     if (questionIndex > 0) changeQuestion(questionIndex - 1, -1);
   }
 
+  function goToReviewPage(page: number) {
+    setReviewPage(Math.max(1, Math.min(page, reviewPageCount)));
+    window.requestAnimationFrame(() => reviewTopRef.current?.scrollIntoView({
+      behavior: reducedMotion ? "instant" : "smooth",
+      block: "start",
+    }));
+  }
+
   const question = questions[questionIndex];
   const progress =
     questions.length > 0
       ? Math.round((questionIndex / questions.length) * 100)
       : 0;
   const accuracy = answered > 0 ? Math.round((score / answered) * 100) : 0;
+  const wrongQuestions = questions.filter((item) => {
+    const answer = selectedAnswers[item.id];
+    return answer && answer !== item.correct_answer;
+  });
+  const reviewsPerPage = 5;
+  const reviewPageCount = Math.max(1, Math.ceil(wrongQuestions.length / reviewsPerPage));
+  const currentReviewPage = Math.min(reviewPage, reviewPageCount);
+  const visibleWrongQuestions = wrongQuestions.slice(
+    (currentReviewPage - 1) * reviewsPerPage,
+    currentReviewPage * reviewsPerPage,
+  );
+  const resultYear =
+    questions.length > 0 &&
+    questions[0].year !== null &&
+    questions.every((item) => item.year === questions[0].year)
+      ? questions[0].year
+      : null;
   const examLabel = activeExamType.toUpperCase();
   const noWaecSubjects =
     activeExamType === "waec" &&
@@ -552,24 +581,68 @@ export function PracticePage({
                   <p className="text-sm text-slate-500">{loadError}</p>
                   <Button onClick={loadQuestions}>Try again</Button>
                 </div>
-              ) : !question ? (
-                <div className="py-20 text-center space-y-4">
-                  <p className="text-lg font-semibold text-navy">
-                    {questions.length === 0
-                      ? selectedTopic
-                        ? `No questions are available for ${cleanTopicLabel(selectedTopic)} right now. Try all topics instead.`
-                        : selectedSource === "original" &&
-                            activeExamType === "waec"
-                          ? `No original ${examLabel} questions are available for this subject yet.`
-                          : `No ${examLabel} questions are available for this subject${selectedYear ? ` in ${selectedYear}` : ""} yet.`
-                      : `You finished all ${selectedSubject.label} questions.`}
+              ) : !question ? questions.length === 0 ? (
+                <div className="space-y-4 py-20 text-center">
+                  <p className="text-lg font-semibold text-navy dark:text-slate-100">
+                    {selectedTopic
+                      ? `No questions are available for ${cleanTopicLabel(selectedTopic)} right now. Try all topics instead.`
+                      : selectedSource === "original" && activeExamType === "waec"
+                        ? `No original ${examLabel} questions are available for this subject yet.`
+                        : `No ${examLabel} questions are available for this subject${selectedYear ? ` in ${selectedYear}` : ""} yet.`}
                   </p>
-                  {questions.length > 0 && (
-                    <p className="text-slate-500">
-                      Final score: {score} / {answered} ({accuracy}%)
+                  <Button onClick={loadQuestions}>Try again</Button>
+                </div>
+              ) : (
+                <div className="space-y-6 py-4">
+                  <div className="rounded-2xl border border-blue-200 bg-blue-50 p-6 dark:border-blue-500/35 dark:bg-slate-800">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-blue-800 dark:text-blue-300">
+                      Practice complete · {examLabel}
                     </p>
-                  )}
-                  <Button onClick={loadQuestions}>Restart practice</Button>
+                    <h2 className="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100">
+                      {selectedSubject.label}{resultYear ? ` · ${resultYear}` : ""}
+                    </h2>
+                    <div className="mt-5 flex flex-wrap gap-5 text-slate-900 dark:text-slate-100">
+                      <div><span className="block text-3xl font-bold">{score}/{answered}</span><span className="text-sm text-slate-700 dark:text-slate-300">Correct answers</span></div>
+                      <div><span className="block text-3xl font-bold">{accuracy}%</span><span className="text-sm text-slate-700 dark:text-slate-300">Accuracy</span></div>
+                    </div>
+                  </div>
+
+                  <section aria-labelledby="practice-review-heading" className="space-y-4">
+                    <div>
+                      <h3 ref={reviewTopRef} id="practice-review-heading" className="scroll-mt-24 text-xl font-bold text-slate-900 dark:text-slate-100">
+                        {wrongQuestions.length === 0 ? "Excellent work — no missed questions" : `You missed ${wrongQuestions.length} question${wrongQuestions.length === 1 ? "" : "s"}`}
+                      </h3>
+                      <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">
+                        {wrongQuestions.length === 0
+                          ? "Keep practising to make this knowledge stick."
+                          : "Review your answers below to understand what you missed."}
+                      </p>
+                    </div>
+                    {visibleWrongQuestions.map((item, index) => (
+                      <div key={item.id} className="rounded-2xl border border-border bg-white p-5 dark:border-border-card dark:bg-card-surface">
+                        <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Missed question {(currentReviewPage - 1) * reviewsPerPage + index + 1}</p>
+                        <p className="mt-2 font-semibold text-slate-900 dark:text-slate-100">{item.prompt}</p>
+                        <p className="mt-3 text-sm text-red-800 dark:text-red-300">Your answer: {item.options[selectedAnswers[item.id]] ?? selectedAnswers[item.id]}</p>
+                        <p className="mt-1 text-sm text-green-800 dark:text-green-300">Correct answer: {item.options[item.correct_answer]}</p>
+                        <p className="mt-3 text-sm leading-6 text-slate-700 dark:text-slate-300">{item.explanation}</p>
+                        <div className="mt-3"><AIExplanation question={item.prompt} options={item.options} correctAnswer={item.correct_answer} explanation={item.explanation} subject={selectedSubject.label} /></div>
+                      </div>
+                    ))}
+                    {reviewPageCount > 1 && (
+                      <nav aria-label="Missed question review pages" className="flex flex-wrap items-center justify-center gap-2">
+                        <Button variant="outline" size="sm" aria-label="First review page" disabled={currentReviewPage === 1} onClick={() => goToReviewPage(1)}>«</Button>
+                        <Button variant="outline" size="sm" aria-label="Previous review page" disabled={currentReviewPage === 1} onClick={() => goToReviewPage(currentReviewPage - 1)}>‹</Button>
+                        {Array.from({ length: reviewPageCount }, (_, index) => index + 1).filter((page) => Math.abs(page - currentReviewPage) <= 2 || page === 1 || page === reviewPageCount).map((page) => (
+                          <Button key={page} variant={page === currentReviewPage ? "default" : "outline"} size="sm" aria-label={`Review page ${page}`} aria-current={page === currentReviewPage ? "page" : undefined} onClick={() => goToReviewPage(page)}>{page}</Button>
+                        ))}
+                        <Button variant="outline" size="sm" aria-label="Next review page" disabled={currentReviewPage === reviewPageCount} onClick={() => goToReviewPage(currentReviewPage + 1)}>›</Button>
+                        <Button variant="outline" size="sm" aria-label="Last review page" disabled={currentReviewPage === reviewPageCount} onClick={() => goToReviewPage(reviewPageCount)}>»</Button>
+                      </nav>
+                    )}
+                  </section>
+
+                  {wrongQuestions.length > 0 && <PracticeResultInvitation />}
+                  <Button variant="outline" onClick={loadQuestions}>Practice another set</Button>
                 </div>
               ) : (
                 <AnimatePresence mode="wait" initial={false}>
@@ -702,7 +775,7 @@ export function PracticePage({
                           {savingAnswer ? "Saving answer..." : "Submit answer"}
                         </Button>
                       ) : (
-                        <Button onClick={nextQuestion}>Next question</Button>
+                        <Button onClick={nextQuestion}>{questionIndex === questions.length - 1 ? "See practice results" : "Next question"}</Button>
                       )}
                     </div>
                     {saveError && (

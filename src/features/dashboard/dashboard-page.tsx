@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -24,6 +25,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { useExamStore } from "@/store/examStore";
 import { FeedbackPrompt } from "@/components/feedback/feedback-prompt";
+import { ProLaunchAnnouncement } from "@/components/announcements/pro-launch-announcement";
 import type { ExamGoal, ExamType } from "@/types/app";
 import {
   cleanTopicLabel,
@@ -61,6 +63,10 @@ export function DashboardPage({
   data?: DashboardData;
   dataByExam?: Record<ExamType, DashboardData>;
 }) {
+  const [announcementStatus, setAnnouncementStatus] = useState<"checking" | "shown" | "none">("checking");
+  const handleAnnouncementChecked = useCallback((shown: boolean) => {
+    setAnnouncementStatus(shown ? "shown" : "none");
+  }, []);
   const { activeExamType, setActiveExamType } = useExamStore();
   const examGoals = data?.examGoals ?? ["jamb"];
   const currentExamType = examGoals.includes(activeExamType)
@@ -106,7 +112,8 @@ export function DashboardPage({
 
   return (
     <div className="space-y-6">
-      <FeedbackPrompt />
+      {announcementStatus === "none" && <FeedbackPrompt />}
+      <ProLaunchAnnouncement onChecked={handleAnnouncementChecked} />
       {examGoals.length > 1 && (
         <div className="inline-flex rounded-xl border border-border bg-white p-1">
           {(["jamb", "waec"] as const).map((examType) => (

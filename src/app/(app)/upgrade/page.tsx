@@ -10,16 +10,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUserPlan } from "@/hooks/use-user-plan";
 import { getMyReferral, type UserReferral } from "@/services/api/referral";
 import { PageSkeleton } from "@/components/layout/page-skeleton";
+import { PAYMENT_PLANS } from "@/config/payments";
+
+const proPlan = PAYMENT_PLANS.prepcore_pro_annual;
 
 const FREE_FEATURES = [
   { text: "Unlimited practice mode", included: true },
-  { text: "Score tracking and progress", included: true },
+  { text: "Correct answers and standard explanations", included: true },
+  { text: "Score, progress, and topic recommendations", included: true },
   { text: "Weekly quiz", included: true },
+  { text: "Limited AI explanations", included: true },
   { text: "Timed mock exams", included: false },
   { text: "Flashcards", included: false },
-  { text: "Unlimited mock exams", included: false },
-  { text: "AI explanations", included: false },
-  { text: "Advanced weak-topic analysis", included: false },
 ];
 
 const PRO_FEATURES = [
@@ -28,10 +30,7 @@ const PRO_FEATURES = [
   "Full JAMB and WAEC mock exams",
   "English 60-question and 40-question subject sections",
   "Subject switching, question maps, timers, and detailed results",
-  "AI explanations",
-  "Advanced weak-topic analysis",
   "Downloadable result cards",
-  "Priority support",
   "One year of Pro access",
 ];
 
@@ -143,9 +142,9 @@ export default function UpgradePage() {
         <h1 className="text-3xl font-bold text-navy">
           Upgrade to Prepcore Pro
         </h1>
-        <p className="mx-auto max-w-lg text-slate-500">
-          Pay online and get automatic Pro access after server-side transaction
-          verification.
+        <p className="mx-auto max-w-2xl text-slate-600 dark:text-slate-300">
+          Practise questions for free. Pro adds realistic timed mock exams and
+          flashcards to help you prepare for exam day.
         </p>
         {referral && (
           <p className="mx-auto max-w-md rounded-xl border border-blue-100 bg-softblue px-4 py-3 text-sm text-navy">
@@ -153,6 +152,19 @@ export default function UpgradePage() {
             {referral.code})
           </p>
         )}
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        {[
+          { title: "Practise like exam day", detail: "Work through full timed JAMB and WAEC mock exams with question maps and detailed results." },
+          { title: "Remember more", detail: "Use flashcards to revisit key ideas between practice sessions." },
+          { title: "Learn from your results", detail: "See detailed mock-exam results and review missed answers after a realistic timed session." },
+        ].map((benefit) => (
+          <div key={benefit.title} className="rounded-2xl border border-border bg-white p-5 dark:border-border-card dark:bg-card-surface">
+            <h2 className="font-semibold text-slate-900 dark:text-slate-100">{benefit.title}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">{benefit.detail}</p>
+          </div>
+        ))}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -217,7 +229,7 @@ export default function UpgradePage() {
                 <Sparkles className="h-5 w-5 text-primary" />
                 Pro
               </CardTitle>
-              <p className="text-4xl font-bold text-navy">NGN 3,000</p>
+              <p className="text-4xl font-bold text-navy">₦{proPlan.amount.toLocaleString("en-NG")}</p>
               <p className="text-sm text-slate-500">One-time yearly access</p>
             </CardHeader>
             <CardContent>

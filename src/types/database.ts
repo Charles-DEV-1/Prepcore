@@ -811,6 +811,20 @@ export type Database = {
       };
     };
     Functions: {
+      get_my_in_app_message: {
+        Args: { p_placement: string };
+        Returns: Array<{
+          id: string;
+          title: string;
+          body: string;
+          cta_label: string;
+          cta_path: string;
+        }>;
+      };
+      dismiss_my_in_app_message: {
+        Args: { p_message_id: string };
+        Returns: undefined;
+      };
       admin_overview_metrics: {
         Args: Record<string, never>;
         Returns: Array<{
