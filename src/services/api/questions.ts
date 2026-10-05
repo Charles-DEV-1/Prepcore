@@ -186,11 +186,13 @@ export async function getSubjectsByExamType(
   );
 
   if (!rpcError && rpcSubjects?.length) {
-    return (
+    const normalized = (
       rpcSubjects as unknown as Array<{
-        subject_id: string;
-        subject_name: string;
-        question_count: number;
+        subject_id?: string;
+        subject_name?: string;
+        id?: string;
+        name?: string;
+        question_count?: number;
         exam_type?: ExamType;
       }>
     )
@@ -199,11 +201,13 @@ export async function getSubjectsByExamType(
           String(subject.exam_type ?? examType).toLowerCase() === examType,
       )
       .map((subject) => ({
-        id: subject.subject_id,
-        name: subject.subject_name,
+        id: subject.subject_id ?? subject.id ?? "",
+        name: subject.subject_name ?? subject.name ?? "",
         exam_type: examType,
         question_count: subject.question_count ?? 0,
-      }));
+      }))
+      .filter((subject) => subject.id && subject.name);
+    if (normalized.length) return normalized;
   }
 
   const { data, error } = await supabase

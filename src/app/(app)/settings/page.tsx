@@ -5,10 +5,16 @@ import { Bell, Check, Moon, ShieldCheck, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ReminderSettingsCard } from "@/components/notifications/reminder-settings-card";
+import { useStudyBuddyVisible } from "@/hooks/use-study-buddy-visible";
 
 export default function SettingsPage() {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const {
+    visible: buddyVisible,
+    ready: buddyVisibilityReady,
+    setVisible: setBuddyVisible,
+  } = useStudyBuddyVisible();
 
   useEffect(() => setMounted(true), []);
 
@@ -95,6 +101,34 @@ export default function SettingsPage() {
                 </button>
               );
             })}
+          </div>
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border p-4 dark:border-border-card">
+            <div>
+              <p className="font-semibold text-slate-900 dark:text-slate-100">
+                Booky, your study buddy
+              </p>
+              <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">
+                Show Booky on supported learning pages. The one-time setup
+                greeting remains visible. Your choice is saved for this account
+                on this device. You can also bring Booky back from the
+                dashboard.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-label="Booky visibility"
+              aria-checked={buddyVisible}
+              disabled={!buddyVisibilityReady}
+              onClick={() => setBuddyVisible(!buddyVisible)}
+              className="rounded-xl border border-border bg-white px-4 py-2 text-sm font-semibold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:border-slate-500 dark:bg-slate-800 dark:text-slate-100"
+            >
+              {!buddyVisibilityReady
+                ? "Loading..."
+                : buddyVisible
+                  ? "Hide Booky"
+                  : "Show Booky"}
+            </button>
           </div>
         </CardContent>
       </Card>

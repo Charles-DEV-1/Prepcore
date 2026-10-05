@@ -240,10 +240,17 @@ export function FlashcardsPage() {
             Swipe, flip, and memorize concepts faster.
           </p>
         </div>
-        <Badge className="border-green-200 bg-green-50 text-green-700">
-          <Sparkles className="mr-1 h-3 w-3" />
-          PRO — {dailyCards.length} today
-        </Badge>
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <Badge className="border-green-200 bg-green-50 text-green-700">
+            <Sparkles className="mr-1 h-3 w-3" />
+            PRO — {dailyCards.length} today
+          </Badge>
+          <div
+            data-buddy-zone="flashcards"
+            data-buddy-mood="neutral"
+            className="pointer-events-none relative hidden h-36 w-40 shrink-0 sm:block"
+          />
+        </div>
       </div>
       {loadError && (
         <p

@@ -16,9 +16,25 @@ import { getCurrentStreak } from "@/services/api/streak";
 import { UserMenu } from "./user-menu";
 import { PointsCelebration } from "@/components/ui/points-celebration";
 import { PageTransition, StreakCelebration } from "@/components/ui/motion";
+import { BuddyController } from "@/components/buddy/buddy-controller";
+import { BuddyVisibilityProvider } from "@/hooks/use-study-buddy-visible";
 
 // Prepcore — Dark Mode
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+  children,
+  userId,
+}: {
+  children: React.ReactNode;
+  userId: string;
+}) {
+  return (
+    <BuddyVisibilityProvider key={userId} userId={userId}>
+      <AppShellContent>{children}</AppShellContent>
+    </BuddyVisibilityProvider>
+  );
+}
+
+function AppShellContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { isPro, isLoading } = useUserPlan();
@@ -243,6 +259,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           ) : (
             <PageTransition key={pathname}>{children}</PageTransition>
           )}
+          <BuddyController mobileMenuOpen={mobileMenuOpen} />
         </main>
       </div>
     </div>

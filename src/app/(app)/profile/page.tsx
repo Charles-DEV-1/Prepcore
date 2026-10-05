@@ -126,11 +126,18 @@ export default function ProfilePage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       {/* Page header */}
-      <div>
-        <h1 className="text-2xl font-bold text-navy">Profile</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Manage your account and subscription
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-navy">Profile</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Manage your account and subscription
+          </p>
+        </div>
+        <div
+          data-buddy-zone="profile"
+          data-buddy-mood="neutral"
+          className="pointer-events-none relative hidden h-36 w-40 shrink-0 sm:block"
+        />
       </div>
 
       {/* Plan card */}
@@ -144,7 +151,9 @@ export default function ProfilePage() {
                     <Crown className="h-5 w-5 text-yellow-600 dark:text-amber-300" />
                   </div>
                   <div>
-                    <p className="font-semibold text-navy dark:text-slate-100">Prepcore Pro</p>
+                    <p className="font-semibold text-navy dark:text-slate-100">
+                      Prepcore Pro
+                    </p>
                     <p className="text-sm text-slate-600 dark:text-slate-300">
                       {isPartnerBulkPro && planPartnerName
                         ? `Included via ${planPartnerName} lesson center plan`
@@ -336,7 +345,13 @@ export default function ProfilePage() {
                 onChange={(e) =>
                   setEditData((prev) =>
                     prev
-                      ? { ...prev, target_score: parseInt(e.target.value) || 0 }
+                      ? {
+                          ...prev,
+                          target_score:
+                            e.target.value === ""
+                              ? null
+                              : Number(e.target.value),
+                        }
                       : null,
                   )
                 }

@@ -26,6 +26,8 @@ import { Progress } from "@/components/ui/progress";
 import { useExamStore } from "@/store/examStore";
 import { FeedbackPrompt } from "@/components/feedback/feedback-prompt";
 import { ProLaunchAnnouncement } from "@/components/announcements/pro-launch-announcement";
+import { BuddyNote } from "@/components/buddy/study-buddy";
+import { useStudyBuddyVisible } from "@/hooks/use-study-buddy-visible";
 import type { ExamGoal, ExamType } from "@/types/app";
 import {
   cleanTopicLabel,
@@ -38,7 +40,7 @@ type DashboardData = {
   streak: number;
   daysUntilExam: number | null;
   examType: string;
-  targetScore: number;
+  targetScore: number | null;
   recentSessions: {
     id: string;
     type: string;
@@ -63,7 +65,14 @@ export function DashboardPage({
   data?: DashboardData;
   dataByExam?: Record<ExamType, DashboardData>;
 }) {
-  const [announcementStatus, setAnnouncementStatus] = useState<"checking" | "shown" | "none">("checking");
+  const {
+    visible: buddyVisible,
+    ready: buddyVisibilityReady,
+    setVisible: setBuddyVisible,
+  } = useStudyBuddyVisible();
+  const [announcementStatus, setAnnouncementStatus] = useState<
+    "checking" | "shown" | "none"
+  >("checking");
   const handleAnnouncementChecked = useCallback((shown: boolean) => {
     setAnnouncementStatus(shown ? "shown" : "none");
   }, []);
@@ -131,6 +140,11 @@ export function DashboardPage({
       {/* Welcome banner */}
       <section className="soft-blue-gradient relative overflow-hidden rounded-[2rem] border border-border p-6 shadow-soft md:p-8">
         <div className="pointer-events-none absolute -right-16 -top-20 h-72 w-72 rounded-full bg-blue-200/40 blur-3xl" />
+        <div
+          data-buddy-zone="dashboard"
+          data-buddy-mood="neutral"
+          className="pointer-events-none absolute right-6 top-3 hidden h-48 w-72 xl:block"
+        />
         <div className="relative flex items-center gap-3">
           <Image
             src="/favicons/android-chrome-512x512.png"
@@ -193,6 +207,47 @@ export function DashboardPage({
           </Button>
         </div>
       </section>
+
+      {buddyVisibilityReady && !buddyVisible ? (
+        <section
+          aria-label="Booky visibility"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-200 bg-blue-50/80 p-4 dark:border-blue-500/30 dark:bg-slate-800/80"
+        >
+          <div>
+            <p className="font-semibold text-slate-900 dark:text-slate-100">
+              Booky is hidden
+            </p>
+            <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">
+              Want your study companion back on supported pages?
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setBuddyVisible(true)}
+          >
+            <Sparkles className="h-4 w-4" /> Show Booky
+          </Button>
+        </section>
+      ) : (
+        <BuddyNote
+          zone="dashboard"
+          pose={
+            activeData?.recommendations.length
+              ? "thinking"
+              : activeData?.hasSessions
+                ? "big-smile"
+                : "wave"
+          }
+          message={
+            !activeData?.hasSessions
+              ? "Let’s start with a few practice questions. Each answer helps build useful suggestions for you."
+              : activeData.recommendations.length > 0
+                ? `Let’s revisit ${cleanTopicLabel(activeData.recommendations[0].topic)} in ${activeData.recommendations[0].subject}. Your recent answers point there.`
+                : "You’re building momentum. Another short practice set will help keep it going."
+          }
+        />
+      )}
 
       {/* Stats row */}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

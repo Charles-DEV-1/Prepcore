@@ -132,7 +132,7 @@ export async function getDashboardData(
     daysUntilExam,
     examType,
     examGoals: profile?.exam_goals ?? [profile?.exam_type ?? "jamb"],
-    targetScore: profile?.target_score ?? 200,
+    targetScore: profile?.target_score ?? null,
     recentSessions,
     recommendations,
     recommendationUnavailable: Boolean(recommendationError),

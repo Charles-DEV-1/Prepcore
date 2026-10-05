@@ -154,27 +154,35 @@ export function ProgressPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <div className="mb-4 inline-flex rounded-xl border border-border bg-white p-1">
-          {(["jamb", "waec"] as const).map((examType) => (
-            <button
-              key={examType}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
-                activeExamType === examType
-                  ? "bg-primary text-white"
-                  : "text-slate-600"
-              }`}
-              onClick={() => setActiveExamType(examType)}
-            >
-              {examType.toUpperCase()}
-            </button>
-          ))}
-        </div>
-        <h1 className="text-3xl font-bold text-navy">Progress analytics</h1>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="mb-4 inline-flex rounded-xl border border-border bg-white p-1">
+            {(["jamb", "waec"] as const).map((examType) => (
+              <button
+                key={examType}
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                  activeExamType === examType
+                    ? "bg-primary text-white"
+                    : "text-slate-600"
+                }`}
+                onClick={() => setActiveExamType(examType)}
+              >
+                {examType.toUpperCase()}
+              </button>
+            ))}
+          </div>
+          <h1 className="text-3xl font-bold text-navy">Progress analytics</h1>
 
-        <p className="mt-2 text-sm text-slate-600">
-          Real performance insights from your practice sessions and mock exams.
-        </p>
+          <p className="mt-2 text-sm text-slate-600">
+            Real performance insights from your practice sessions and mock
+            exams.
+          </p>
+        </div>
+        <div
+          data-buddy-zone="progress"
+          data-buddy-mood="thinking"
+          className="pointer-events-none relative hidden h-40 w-40 shrink-0 sm:block"
+        />
       </div>
 
       <section className="grid gap-4 md:grid-cols-4">

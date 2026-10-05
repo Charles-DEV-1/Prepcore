@@ -46,7 +46,7 @@ export default async function AuthenticatedLayout({
   }
 
   return (
-    <AppShell>
+    <AppShell userId={user.id}>
       <ReferralApplicator />
       {children}
     </AppShell>

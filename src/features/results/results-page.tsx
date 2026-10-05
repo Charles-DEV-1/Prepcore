@@ -533,6 +533,13 @@ export function ResultsPage({ id }: { id: string }) {
             </Button>
           </div>
         </div>
+        <div
+          data-buddy-zone="results"
+          data-buddy-mood={
+            score >= 80 ? "celebrate" : score >= 50 ? "big-smile" : "thinking"
+          }
+          className="pointer-events-none relative mt-3 h-40 w-44"
+        />
       </section>
 
       {/* Preview of sharecard */}

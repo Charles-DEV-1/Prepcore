@@ -3,7 +3,12 @@ import { PracticePage } from "@/features/practice/practice-page";
 export default async function PracticeRoute({
   searchParams,
 }: {
-  searchParams: Promise<{ exam?: string; subject?: string; topic?: string }>;
+  searchParams: Promise<{
+    exam?: string;
+    subject?: string;
+    topic?: string;
+    intro?: string;
+  }>;
 }) {
   const params = await searchParams;
   const recommendation =
@@ -21,5 +26,17 @@ export default async function PracticeRoute({
           topic: params.topic,
         }
       : null;
-  return <PracticePage recommendation={recommendation} />;
+  const onboardingRound =
+    params.intro === "1" &&
+    (params.exam === "jamb" || params.exam === "waec") &&
+    typeof params.subject === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.subject)
+      ? { exam: params.exam as "jamb" | "waec", subjectId: params.subject }
+      : null;
+  return (
+    <PracticePage
+      recommendation={recommendation}
+      onboardingRound={onboardingRound}
+    />
+  );
 }

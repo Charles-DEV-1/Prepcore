@@ -56,8 +56,8 @@ export type OnboardingProfile = {
   examType: ExamType;
   examGoals: ExamGoal;
   subjects: string[];
-  targetScore: number;
-  examDate: string;
+  targetScore: number | null;
+  examDate: string | null;
 };
 
 // Prepcore — User Referral System

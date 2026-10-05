@@ -36,7 +36,7 @@ export async function completeOnboarding(values: OnboardingValues) {
     exam_goals: values.examGoals,
     selected_subjects: values.subjects,
     target_score: values.targetScore,
-    exam_date: values.examDate,
+    exam_date: values.examDate || null,
     onboarding_completed: true,
   };
 
