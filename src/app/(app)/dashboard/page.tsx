@@ -45,6 +45,7 @@ export default async function DashboardRoute() {
 
   return (
     <DashboardPage
+      userId={user?.id ?? ""}
       userName={firstName}
       data={dashboardData}
       dataByExam={{ jamb: dashboardData, waec: waecDashboardData }}

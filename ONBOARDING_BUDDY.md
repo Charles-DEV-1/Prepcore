@@ -4,8 +4,22 @@ The `/onboarding` route is a Booky-led conversation: name, exam, optional exam
 date, optional course for JAMB, subjects, optional confidence check, optional
 daily study time, then a plan reveal. Each screen asks one main question,
 Booky reacts before advancing, and the progress bar replaces the old tabs.
-The primary final action opens a five-question starter set in Practice; a
-secondary action goes to the dashboard. Neither action initiates payment.
+The primary final action leads to a five-question starter set in Practice; a
+secondary action leads to the dashboard. Both pass through a short, optional
+WhatsApp study-group invitation after the profile has been saved. Joining is
+not required to continue. Neither action initiates payment. A verified Pro
+payment also offers the same invitation on its success page; pending and
+failed payments do not show it. The group link is configured centrally in
+`src/config/community.ts`.
+
+The dashboard has a small in-flow WhatsApp reminder near Booky. It waits until
+at least two days after that account first visits the dashboard, then appears
+after a short pause only if no Pro announcement or open dialog is competing
+for attention. It disappears automatically, stays visible while hovered or
+focused, and is limited to once every seven days on that device. Dismissing
+it pauses it for 30 days; opening the group link pauses it for 90 days. Its
+local preference key is account-scoped, so it does not follow another login
+on the same browser. It never floats over practice or exam controls.
 
 Subject choices come from `public.subjects`. A failed or empty catalogue read
 blocks the subject step instead of silently using invented options. JAMB starts

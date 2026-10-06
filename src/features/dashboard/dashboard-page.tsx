@@ -26,6 +26,7 @@ import { Progress } from "@/components/ui/progress";
 import { useExamStore } from "@/store/examStore";
 import { FeedbackPrompt } from "@/components/feedback/feedback-prompt";
 import { ProLaunchAnnouncement } from "@/components/announcements/pro-launch-announcement";
+import { DashboardCommunityNudge } from "@/components/community/dashboard-community-nudge";
 import { BuddyNote } from "@/components/buddy/study-buddy";
 import { useStudyBuddyVisible } from "@/hooks/use-study-buddy-visible";
 import type { ExamGoal, ExamType } from "@/types/app";
@@ -57,10 +58,12 @@ type DashboardData = {
 } | null;
 
 export function DashboardPage({
+  userId,
   userName = "Student",
   data,
   dataByExam,
 }: {
+  userId: string;
   userName?: string;
   data?: DashboardData;
   dataByExam?: Record<ExamType, DashboardData>;
@@ -248,6 +251,11 @@ export function DashboardPage({
           }
         />
       )}
+
+      <DashboardCommunityNudge
+        userId={userId}
+        enabled={announcementStatus === "none"}
+      />
 
       {/* Stats row */}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

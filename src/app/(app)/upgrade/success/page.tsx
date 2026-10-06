@@ -4,6 +4,7 @@ import { CheckCircle2, Clock3, Loader2, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { WhatsAppStudyCard } from "@/components/community/whatsapp-study-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -86,16 +87,16 @@ export default function PaymentSuccessPage() {
   }, [searchParams, retry]);
 
   return (
-    <div className="mx-auto flex min-h-[60vh] max-w-xl items-center">
-      <Card className="w-full border-border bg-white shadow-sm">
+    <div className="mx-auto flex min-h-[60vh] max-w-xl flex-col justify-center gap-5">
+      <Card className="w-full border-border bg-white shadow-sm dark:bg-card-surface">
         <CardContent className="p-8 text-center">
           {state.status === "checking" && (
             <>
               <Loader2 className="mx-auto h-10 w-10 animate-spin text-primary" />
-              <h1 className="mt-4 text-2xl font-bold text-navy">
+              <h1 className="mt-4 text-2xl font-bold text-navy dark:text-slate-100">
                 Verifying your payment
               </h1>
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">
                 Please wait while Prepcore confirms your Flutterwave
                 transaction.
               </p>
@@ -105,10 +106,10 @@ export default function PaymentSuccessPage() {
           {state.status === "success" && (
             <>
               <CheckCircle2 className="mx-auto h-12 w-12 text-green-500" />
-              <h1 className="mt-4 text-2xl font-bold text-navy">
+              <h1 className="mt-4 text-2xl font-bold text-navy dark:text-slate-100">
                 Pro is active
               </h1>
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">
                 Your payment was verified and your Prepcore Pro access has been
                 enabled.
               </p>
@@ -152,10 +153,10 @@ export default function PaymentSuccessPage() {
           {state.status === "failed" && (
             <>
               <XCircle className="mx-auto h-12 w-12 text-red-500" />
-              <h1 className="mt-4 text-2xl font-bold text-navy">
+              <h1 className="mt-4 text-2xl font-bold text-navy dark:text-slate-100">
                 Verification failed
               </h1>
-              <p className="mt-2 text-sm text-slate-500">{state.message}</p>
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">{state.message}</p>
               {searchParams.get("tx_ref") && (
                 <p className="mt-3 break-all text-xs text-slate-500">
                   Reference: {searchParams.get("tx_ref")}
@@ -185,6 +186,7 @@ export default function PaymentSuccessPage() {
           )}
         </CardContent>
       </Card>
+      {state.status === "success" && <WhatsAppStudyCard />}
     </div>
   );
 }

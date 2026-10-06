@@ -16,6 +16,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getReferralCookie } from "@/lib/referral";
+import { postOnboardingWelcomeHref } from "@/lib/post-onboarding";
 import { isJambEnglishSubject } from "@/lib/subject-catalogue";
 import { clearUserReferralCode } from "@/lib/user-referral-storage";
 import { onboardingSchema, type OnboardingValues } from "@/lib/validations";
@@ -627,7 +628,7 @@ export function OnboardingForm() {
       clearUserReferralCode();
       return practicePath;
     },
-    onSuccess: (path) => router.replace(path),
+    onSuccess: (path) => router.replace(postOnboardingWelcomeHref(path)),
     onError: (reason: Error) => setError(reason.message),
   });
 
