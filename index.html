@@ -450,14 +450,38 @@
       .footer-links {
         display: flex;
         gap: 16px;
+        flex-wrap: wrap;
       }
       .footer-links a {
         font-size: 13px;
-        color: #94a3b8;
+        color: #475569;
         text-decoration: none;
       }
       .footer-links a:hover {
         color: #185fa5;
+      }
+      .footer-links .community-link {
+        color: #166534;
+        background: #ecfdf5;
+        border-radius: 999px;
+        padding: 6px 10px;
+        transition: transform 220ms ease, box-shadow 220ms ease, background 220ms ease;
+      }
+      .footer-links .community-link:hover,
+      .footer-links .community-link:focus-visible {
+        color: #14532d;
+        background: #dcfce7;
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(22, 101, 52, 0.16);
+      }
+      .footer-links .community-link:focus-visible {
+        outline: 2px solid #166534;
+        outline-offset: 3px;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .footer-links .community-link { transition: none; }
+        .footer-links .community-link:hover,
+        .footer-links .community-link:focus-visible { transform: none; }
       }
       .success-msg {
         display: none;
@@ -818,6 +842,7 @@
         <a href="#">Contact</a>
         <a href="https://tiktok.com/@prepcoreng">TikTok</a>
         <a href="https://instagram.com/prepcoreng">Instagram</a>
+        <a class="community-link" href="https://chat.whatsapp.com/FouYOCOnNbH3ngWizEChTO" target="_blank" rel="noopener noreferrer">WhatsApp study group</a>
       </div>
     </footer>
 

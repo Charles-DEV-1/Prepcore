@@ -36,7 +36,8 @@ export function DashboardCommunityNudge({
       if (
         document.visibilityState !== "visible" ||
         document.querySelector('[role="dialog"][data-state="open"]')
-      ) return;
+      )
+        return;
       try {
         recordCommunityNudge(window.localStorage, userId, "shown", Date.now());
         setVisible(true);
@@ -49,7 +50,10 @@ export function DashboardCommunityNudge({
 
   useEffect(() => {
     if (!visible || engaged) return;
-    const timer = window.setTimeout(() => setVisible(false), VISIBLE_DURATION_MS);
+    const timer = window.setTimeout(
+      () => setVisible(false),
+      VISIBLE_DURATION_MS,
+    );
     return () => window.clearTimeout(timer);
   }, [visible, engaged]);
 
@@ -70,24 +74,29 @@ export function DashboardCommunityNudge({
           initial={reducedMotion ? false : { opacity: 0, y: 8, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={reducedMotion ? undefined : { opacity: 0, y: -4 }}
+          whileHover={reducedMotion ? undefined : { y: -3, scale: 1.01 }}
           transition={{ duration: 0.25 }}
           onMouseEnter={() => setEngaged(true)}
           onMouseLeave={() => setEngaged(false)}
           onFocusCapture={() => setEngaged(true)}
           onBlurCapture={(event) => {
             const nextFocus = event.relatedTarget;
-            if (!(nextFocus instanceof Node) || !event.currentTarget.contains(nextFocus))
+            if (
+              !(nextFocus instanceof Node) ||
+              !event.currentTarget.contains(nextFocus)
+            )
               setEngaged(false);
           }}
-          className="ml-auto flex w-full max-w-md items-start gap-3 rounded-2xl border border-emerald-300 bg-emerald-50 p-3 text-slate-900 shadow-md dark:border-emerald-700 dark:bg-slate-800 dark:text-slate-100 sm:p-4"
+          className="group ml-auto flex w-full max-w-md items-start gap-3 rounded-2xl border border-emerald-300 bg-emerald-50 p-3 text-slate-900 shadow-md transition-[border-color,box-shadow] duration-300 hover:border-emerald-500 hover:shadow-[0_16px_35px_rgba(5,150,105,0.18)] focus-within:border-emerald-500 focus-within:shadow-[0_16px_35px_rgba(5,150,105,0.18)] dark:border-emerald-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:border-emerald-500 dark:focus-within:border-emerald-500 sm:p-4"
         >
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-800 dark:bg-emerald-900/70 dark:text-emerald-200">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-800 transition-transform duration-300 motion-safe:group-hover:-rotate-6 motion-safe:group-hover:scale-110 motion-safe:group-focus-within:-rotate-6 motion-safe:group-focus-within:scale-110 dark:bg-emerald-900/70 dark:text-emerald-200">
             <MessageCircle className="h-5 w-5" aria-hidden="true" />
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-bold">Study with us on WhatsApp</p>
             <p className="mt-1 text-xs leading-5 text-slate-700 dark:text-slate-300">
-              Get practice questions and discuss the answers with other learners.
+              Get practice questions and discuss the answers with other
+              learners.
             </p>
             <a
               href={WHATSAPP_STUDY_GROUP_URL}
@@ -96,7 +105,11 @@ export function DashboardCommunityNudge({
               onClick={() => finish("opened")}
               className="mt-2 inline-flex min-h-9 items-center gap-1 rounded-md text-sm font-semibold text-emerald-900 underline underline-offset-4 hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 dark:text-emerald-200 dark:hover:text-emerald-100"
             >
-              Join the group <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+              Join the group{" "}
+              <ArrowUpRight
+                className="h-4 w-4 transition-transform duration-300 motion-safe:group-hover:-translate-y-0.5 motion-safe:group-hover:translate-x-0.5 motion-safe:group-focus-within:-translate-y-0.5 motion-safe:group-focus-within:translate-x-0.5"
+                aria-hidden="true"
+              />
               <span className="sr-only">(opens in a new tab)</span>
             </a>
           </div>

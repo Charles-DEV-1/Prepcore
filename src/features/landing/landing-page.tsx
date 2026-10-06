@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { PublicNavbar } from "@/components/layout/public-navbar";
 import { Footer } from "@/components/layout/footer";
+import { HomeStudyGroupInvite } from "@/components/community/home-study-group-invite";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -241,6 +242,8 @@ export function LandingPage() {
           </div>
         </div>
       </section>
+
+      <HomeStudyGroupInvite />
 
       <section className="bg-white py-10 dark:bg-[#0B1220]">
         <div className="container grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
