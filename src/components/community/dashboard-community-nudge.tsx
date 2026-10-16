@@ -2,125 +2,105 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowUpRight, MessageCircle, X } from "lucide-react";
+import { ArrowUpRight, MessageCircleMore, X } from "lucide-react";
 import { WHATSAPP_STUDY_GROUP_URL } from "@/config/community";
 import {
   recordCommunityNudge,
   shouldShowCommunityNudge,
 } from "@/lib/community-nudge";
 
-const APPEAR_DELAY_MS = 18_000;
-const VISIBLE_DURATION_MS = 14_000;
-
 export function DashboardCommunityNudge({
   userId,
-  enabled,
+  onChecked,
 }: {
   userId: string;
-  enabled: boolean;
+  onChecked: (shown: boolean) => void;
 }) {
   const reducedMotion = useReducedMotion();
   const [visible, setVisible] = useState(false);
-  const [engaged, setEngaged] = useState(false);
 
   useEffect(() => {
-    if (!enabled || !userId) return;
-    try {
-      if (!shouldShowCommunityNudge(window.localStorage, userId, Date.now()))
-        return;
-    } catch {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      if (
-        document.visibilityState !== "visible" ||
-        document.querySelector('[role="dialog"][data-state="open"]')
-      )
-        return;
+    let shouldShow = false;
+    if (userId) {
       try {
-        recordCommunityNudge(window.localStorage, userId, "shown", Date.now());
-        setVisible(true);
+        shouldShow = shouldShowCommunityNudge(
+          window.localStorage,
+          userId,
+          Date.now(),
+        );
       } catch {
-        // If a browser blocks storage, do not show a repeating invitation.
+        // Storage can be blocked in private modes. Still show the update;
+        // dismissing it will hide it for this visit.
+        shouldShow = true;
       }
-    }, APPEAR_DELAY_MS);
-    return () => window.clearTimeout(timer);
-  }, [enabled, userId]);
-
-  useEffect(() => {
-    if (!visible || engaged) return;
-    const timer = window.setTimeout(
-      () => setVisible(false),
-      VISIBLE_DURATION_MS,
-    );
-    return () => window.clearTimeout(timer);
-  }, [visible, engaged]);
+    }
+    setVisible(shouldShow);
+    onChecked(shouldShow);
+  }, [userId, onChecked]);
 
   function finish(action: "dismissed" | "opened") {
     try {
       recordCommunityNudge(window.localStorage, userId, action, Date.now());
     } catch {
-      // Keep the dashboard usable if local storage becomes unavailable.
+      // The card can still be closed for this visit without storage access.
     }
     setVisible(false);
   }
 
   return (
     <AnimatePresence>
-      {visible && enabled && (
+      {visible && (
         <motion.aside
-          aria-label="WhatsApp study group invitation"
-          initial={reducedMotion ? false : { opacity: 0, y: 8, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={reducedMotion ? undefined : { opacity: 0, y: -4 }}
-          whileHover={reducedMotion ? undefined : { y: -3, scale: 1.01 }}
-          transition={{ duration: 0.25 }}
-          onMouseEnter={() => setEngaged(true)}
-          onMouseLeave={() => setEngaged(false)}
-          onFocusCapture={() => setEngaged(true)}
-          onBlurCapture={(event) => {
-            const nextFocus = event.relatedTarget;
-            if (
-              !(nextFocus instanceof Node) ||
-              !event.currentTarget.contains(nextFocus)
-            )
-              setEngaged(false);
-          }}
-          className="group ml-auto flex w-full max-w-md items-start gap-3 rounded-2xl border border-emerald-300 bg-emerald-50 p-3 text-slate-900 shadow-md transition-[border-color,box-shadow] duration-300 hover:border-emerald-500 hover:shadow-[0_16px_35px_rgba(5,150,105,0.18)] focus-within:border-emerald-500 focus-within:shadow-[0_16px_35px_rgba(5,150,105,0.18)] dark:border-emerald-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:border-emerald-500 dark:focus-within:border-emerald-500 sm:p-4"
+          aria-label="New Prepcore study community update"
+          initial={reducedMotion ? false : { opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={reducedMotion ? undefined : { opacity: 0, y: -6 }}
+          transition={{ duration: 0.28, ease: "easeOut" }}
+          className="group relative overflow-hidden rounded-2xl border border-emerald-300 bg-gradient-to-r from-emerald-50 via-white to-blue-50 p-4 text-slate-900 shadow-[0_12px_30px_rgba(15,118,110,0.09)] dark:border-emerald-700/70 dark:from-[#123026] dark:via-slate-800 dark:to-slate-800 dark:text-slate-100 sm:p-5"
         >
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-800 transition-transform duration-300 motion-safe:group-hover:-rotate-6 motion-safe:group-hover:scale-110 motion-safe:group-focus-within:-rotate-6 motion-safe:group-focus-within:scale-110 dark:bg-emerald-900/70 dark:text-emerald-200">
-            <MessageCircle className="h-5 w-5" aria-hidden="true" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold">Study with us on WhatsApp</p>
-            <p className="mt-1 text-xs leading-5 text-slate-700 dark:text-slate-300">
-              Get practice questions and discuss the answers with other
-              learners.
-            </p>
-            <a
-              href={WHATSAPP_STUDY_GROUP_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => finish("opened")}
-              className="mt-2 inline-flex min-h-9 items-center gap-1 rounded-md text-sm font-semibold text-emerald-900 underline underline-offset-4 hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 dark:text-emerald-200 dark:hover:text-emerald-100"
+          <div className="relative flex items-start gap-3 sm:gap-4">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-emerald-800 text-white transition-transform duration-300 motion-safe:group-hover:-rotate-6 motion-safe:group-hover:scale-105 dark:bg-emerald-700">
+              <MessageCircleMore className="h-6 w-6" aria-hidden="true" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-800 dark:text-emerald-200">
+                New on Prepcore
+              </p>
+              <h2 className="mt-1 text-lg font-bold sm:text-xl">
+                Join our free WhatsApp study group
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-700 dark:text-slate-300">
+                Practice JAMB and WAEC questions with other learners, discuss
+                the answers, and keep studying together.
+              </p>
+              <a
+                href={WHATSAPP_STUDY_GROUP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => finish("opened")}
+                className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-lg bg-emerald-800 px-4 text-sm font-semibold text-white transition-colors hover:bg-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 dark:bg-emerald-700 dark:hover:bg-emerald-600 dark:focus-visible:ring-emerald-400 dark:focus-visible:ring-offset-slate-800"
+              >
+                Join the group
+                <ArrowUpRight
+                  className="h-4 w-4 transition-transform duration-300 motion-safe:group-hover:-translate-y-0.5 motion-safe:group-hover:translate-x-0.5"
+                  aria-hidden="true"
+                />
+                <span className="sr-only">(opens in a new tab)</span>
+              </a>
+              <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">
+                Optional to join. Your phone number may be visible to group
+                members.
+              </p>
+            </div>
+            <button
+              type="button"
+              aria-label="Dismiss study group update"
+              onClick={() => finish("dismissed")}
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-slate-600 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 dark:text-slate-300 dark:hover:bg-slate-700"
             >
-              Join the group{" "}
-              <ArrowUpRight
-                className="h-4 w-4 transition-transform duration-300 motion-safe:group-hover:-translate-y-0.5 motion-safe:group-hover:translate-x-0.5 motion-safe:group-focus-within:-translate-y-0.5 motion-safe:group-focus-within:translate-x-0.5"
-                aria-hidden="true"
-              />
-              <span className="sr-only">(opens in a new tab)</span>
-            </a>
+              <X className="h-4 w-4" aria-hidden="true" />
+            </button>
           </div>
-          <button
-            type="button"
-            aria-label="Dismiss WhatsApp group invitation"
-            onClick={() => finish("dismissed")}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-600 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 dark:text-slate-300 dark:hover:bg-slate-700"
-          >
-            <X className="h-4 w-4" aria-hidden="true" />
-          </button>
         </motion.aside>
       )}
     </AnimatePresence>

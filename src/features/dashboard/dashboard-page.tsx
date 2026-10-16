@@ -76,8 +76,14 @@ export function DashboardPage({
   const [announcementStatus, setAnnouncementStatus] = useState<
     "checking" | "shown" | "none"
   >("checking");
+  const [communityStatus, setCommunityStatus] = useState<
+    "checking" | "shown" | "none"
+  >("checking");
   const handleAnnouncementChecked = useCallback((shown: boolean) => {
     setAnnouncementStatus(shown ? "shown" : "none");
+  }, []);
+  const handleCommunityChecked = useCallback((shown: boolean) => {
+    setCommunityStatus(shown ? "shown" : "none");
   }, []);
   const { activeExamType, setActiveExamType } = useExamStore();
   const examGoals = data?.examGoals ?? ["jamb"];
@@ -124,8 +130,14 @@ export function DashboardPage({
 
   return (
     <div className="space-y-6">
-      {announcementStatus === "none" && <FeedbackPrompt />}
+      {announcementStatus === "none" && communityStatus === "none" && (
+        <FeedbackPrompt />
+      )}
       <ProLaunchAnnouncement onChecked={handleAnnouncementChecked} />
+      <DashboardCommunityNudge
+        userId={userId}
+        onChecked={handleCommunityChecked}
+      />
       {examGoals.length > 1 && (
         <div className="inline-flex rounded-xl border border-border bg-white p-1">
           {(["jamb", "waec"] as const).map((examType) => (
@@ -251,11 +263,6 @@ export function DashboardPage({
           }
         />
       )}
-
-      <DashboardCommunityNudge
-        userId={userId}
-        enabled={announcementStatus === "none"}
-      />
 
       {/* Stats row */}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
